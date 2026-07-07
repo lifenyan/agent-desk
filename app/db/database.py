@@ -11,9 +11,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 # Kept independent of app.config (an M1 concern) so M0 scripts and migrations can run standalone.
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql+psycopg://itsm:itsm@localhost:5432/itsm"
-)
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+psycopg://itsm:itsm@localhost:5432/itsm")
 
 engine = create_engine(DATABASE_URL, future=True, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, class_=Session, expire_on_commit=False)

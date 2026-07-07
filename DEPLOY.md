@@ -2,7 +2,8 @@
 
 Three services (API + chat UI + manager approvals UI) built from the same Dockerfile, plus
 managed Postgres (with pgvector) and managed Redis. Railway is the primary path; Render is the
-alternative. CI auto-deploy arrives in M4; the AWS migration is M7.
+alternative. The CI deploy workflow exists since M4 but ships **inert** (see "CI deploy"
+below); the AWS migration is M7.
 
 > **M2 note:** the approvals UI (`ui/approval_view.py` — the HITL approve/reject surface) is a
 > third service, added below alongside the chat UI. It's optional (API + chat UI deploy fine
@@ -11,7 +12,7 @@ alternative. CI auto-deploy arrives in M4; the AWS migration is M7.
 
 ## Prerequisites
 
-- The repo pushed to GitHub (it currently has **zero commits** — commit and push first).
+- The repo is on GitHub (github.com/lifenyan/agent-desk, public, branch `main`).
 - Your `OPENAI_API_KEY`.
 - The Docker image already applies migrations at boot (`alembic upgrade head` in the CMD),
   and bundles `scripts/` + `data/` so seeding runs remotely without LLM calls (data is cached
@@ -81,6 +82,40 @@ alternative. CI auto-deploy arrives in M4; the AWS migration is M7.
    same `API_URL`.
 7. Verify as above (incl. the M2 HITL check).
 
+## CI deploy (`.github/workflows/deploy.yml` — M4, shipped inert; ADR-029)
+
+The workflow exists but is deliberately **disarmed** until the manual first deploy above has
+happened (ADR-009: the first deploy is a learning exercise, done by hand — there is currently
+no Railway project, token, or URL for the workflow to talk to). Its behavior today:
+
+- **push to `main`**: the job is skipped unless the repo variable `DEPLOY_ENABLED` is `'true'`.
+- **manual `workflow_dispatch`**: always runs, but fails loudly at the first step until the
+  secrets/variables below exist — a red run that says exactly what's missing, never a green
+  run that deployed nothing.
+
+What an armed run does: validate the Docker image builds → `railway up` the API service →
+run `alembic upgrade head` in the deployed environment (explicit release step; the image CMD
+also migrates at boot) → poll **`/readyz`** (not `/health` — it doesn't exist) for up to 5
+minutes and fail if it never goes ready.
+
+### Arming it (after the manual first deploy)
+
+1. Complete the manual Railway deploy above (project + Postgres + Redis + API service).
+2. Repo **secret**: `RAILWAY_TOKEN` — a project token (Railway → project → Settings → Tokens).
+3. Repo **variables** (Settings → Secrets and variables → Actions → Variables):
+   - `RAILWAY_SERVICE` — the API service name in Railway.
+   - `DEPLOY_HEALTH_URL` — the public API base URL, no trailing slash (e.g.
+     `https://agentdesk-api.up.railway.app`).
+4. Dry-run: trigger **Deploy** via `workflow_dispatch` (Actions tab or
+   `gh workflow run deploy.yml`) and watch it go green end-to-end.
+5. Flip the repo variable `DEPLOY_ENABLED` to `true` — from then on every push to `main`
+   (i.e. every merged PR, which has already passed the CI eval gates) deploys.
+
+Live verification of the workflow is **deferred** until after the manual first deploy
+(ADR-009/ADR-029); until then its acceptance is actionlint/dry-run review only. The UI
+services redeploy from Railway's own GitHub integration or by re-running their services —
+the workflow deploys the API only (the UIs are stateless and rarely change per ADR-005).
+
 ## Notes
 
 - **Order matters**: API must boot once (running migrations) before seed/ingest.
@@ -90,7 +125,7 @@ alternative. CI auto-deploy arrives in M4; the AWS migration is M7.
   for a demo, but conversation history resets on redeploy until M5 moves it into Postgres.
 - **Costs**: both PaaS free/hobby tiers fit. The only per-request LLM spend is chat + routing
   (gpt-5-mini) — embeddings are one-time + cached.
-- **What M4 adds**: deploy-on-merge via GitHub Actions (`.github/workflows/deploy.yml`),
-  eval gates before deploy.
+- **What M4 added**: the inert deploy workflow above, plus the CI eval gates that every PR
+  passes before it can be merged (so an armed deploy-on-merge only ever ships gated code).
 - **What M7 adds**: the AWS/Terraform migration (ECS Fargate, RDS, ElastiCache) with a
   "PaaS → AWS: what actually changed" writeup.

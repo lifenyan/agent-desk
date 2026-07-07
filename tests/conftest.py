@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import os
 from fnmatch import fnmatch
 
 import pytest
@@ -23,8 +24,18 @@ def db_available() -> bool:
         return False
 
 
+_DB_AVAILABLE = db_available()
+
+# CI guard (M4): locally, DB-backed tests skip politely when Postgres is down — but in CI that
+# silent skip would produce a green run that tested almost nothing. ci.yml sets REQUIRE_DB=1,
+# turning an unreachable DB into a loud collection-time failure instead of 30+ silent skips.
+if os.environ.get("REQUIRE_DB") == "1" and not _DB_AVAILABLE:
+    raise RuntimeError(
+        "REQUIRE_DB=1 but Postgres is unreachable — refusing to run a green-but-empty suite"
+    )
+
 requires_db = pytest.mark.skipif(
-    not db_available(), reason="Postgres not reachable (run `make db-up && make seed`)"
+    not _DB_AVAILABLE, reason="Postgres not reachable (run `make db-up && make seed`)"
 )
 
 

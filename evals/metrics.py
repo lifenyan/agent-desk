@@ -26,7 +26,9 @@ def dedupe_preserving_order(ids: Sequence[str]) -> list[str]:
 def recall_at_k(expected: Sequence[str], retrieved: Sequence[str], k: int = 5) -> float:
     """Fraction of expected ids present in the top-k retrieved (deduped, order-preserving)."""
     if not expected:
-        raise ValueError("recall@k is undefined for an empty expected set (refusal cases score separately)")
+        raise ValueError(
+            "recall@k is undefined for an empty expected set (refusal cases score separately)"
+        )
     top = set(dedupe_preserving_order(retrieved)[:k])
     return sum(1 for e in expected if e in top) / len(expected)
 

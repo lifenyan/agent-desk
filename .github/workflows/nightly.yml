@@ -1,0 +1,86 @@
+# Nightly full-suite eval run (M4): retrieval + routing (all 30) + e2e (through a live uvicorn
+# the e2e suite spawns itself) + dedup — the suites too slow/expensive for every PR (ADR-026).
+# workflow_dispatch is the dry-run/on-demand path. Failures notify via GitHub's default
+# workflow-failure email — deliberately no extra notification infra.
+name: Nightly evals
+
+on:
+  schedule:
+    - cron: "0 18 * * *" # 18:00 UTC daily — off the interactive workday, one run per day
+  workflow_dispatch:
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false # let a running eval finish; results are the point
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    # Generous: e2e wall time is dominated by LLM API latency and was measured varying
+    # 5–35 min for the same 6 flows (each HTTP call is individually capped at 240 s).
+    timeout-minutes: 60
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: itsm
+          POSTGRES_PASSWORD: itsm
+          POSTGRES_DB: itsm
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U itsm -d itsm"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://itsm:itsm@localhost:5432/itsm
+      REDIS_URL: redis://localhost:6379/0
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Require OPENAI_API_KEY secret
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY repo secret is missing or empty — the eval suites cannot run"
+            exit 1
+          fi
+
+      - name: Migrate + seed + ingest
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          alembic upgrade head
+          python scripts/seed_db.py
+          python -m app.rag.ingest
+
+      # All four suites (no --suite flag = everything). The e2e suite spawns its own uvicorn
+      # on :8123 in this job's process group and asserts side effects through the real HTTP
+      # contract; the full metrics table lands in the job summary.
+      - name: Full eval suite
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python -m evals.run_evals

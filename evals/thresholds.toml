@@ -1,0 +1,36 @@
+# Eval floors — the single source of truth consumed by evals/run_evals.py locally AND in CI
+# (the workflows run the same harness; there is no second copy of these numbers anywhere).
+#
+# Philosophy (ADR-026): floors are REGRESSION gates, not perfection gates. Each floor sits
+# BELOW its measured baseline by more than observed run-to-run variance, so green means
+# "nothing broke" and red always means a real regression — never eval noise. Loosening a floor
+# to match an older plan (the original M4 sketch said 0.75/0.85) would be backwards: the
+# baselines are measured at 1.0, so the enforced 0.8/0.9 already ARE the regression margins.
+#
+# Baselines (2026-07-07, gpt-5-mini + text-embedding-3-small — floors are only meaningful
+# against the models that produced them; re-measure before changing models):
+#   retrieval  recall@5 1.000 · MRR 0.980 · refusals 5/5 · false refusals 0
+#   routing    accuracy 1.000 (hard 6/6) · ping-pong 0 · integrity failures 0
+#   dedup      final dataset 12/12; runs during dataset finalization 9–10/12 with two probes
+#              observed flipping run-to-run (gray-band judgment is genuinely variable, ADR-028)
+
+[retrieval]
+recall_at_5 = 0.8
+refusal_accuracy = 1.0 # 5 binary cases; a single missed refusal is a real regression
+false_refusals_max = 0
+
+[routing]
+accuracy = 0.9
+integrity_failures_max = 0
+
+[e2e]
+# Every flow is a product contract (order HITL, dedup link/create, citations, cache serve);
+# one broken flow is a broken product, so the floor is all-of-them.
+flow_pass_rate = 1.0
+
+[dedup]
+# Gray-band (0.60-0.80 cosine) judgment accuracy over 6 link probes + 6 traps. Baseline
+# 2026-07-07: 12/12 on the final dataset, but single-probe flips were observed across runs
+# (see ADR-028) — 0.75 sits three flips below perfect, one below the worst observed run,
+# so red means a systematic judgment regression, not one flaky probe.
+accuracy = 0.75

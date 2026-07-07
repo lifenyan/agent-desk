@@ -1,7 +1,16 @@
-"""Eval harness CLI: run the full suite (retrieval, routing, e2e) or --subset for CI.
+"""Eval harness CLI: run the full suite (retrieval, routing, e2e, dedup) or --subset for CI.
 
-M1 implements the retrieval suite; the SUITES registry is the extension point where M4 plugs in
-routing + e2e without touching this runner's shape.
+M1 implemented the retrieval suite, M2 routing; M4 plugged e2e (evals/suite_e2e.py) and dedup
+(evals/suite_dedup.py) into the SUITES registry, moved the pass/fail floors into
+evals/thresholds.toml (single source of truth, ADR-026 — floors are REGRESSION gates set
+below observed variance, not perfection gates), and added:
+- `--subset`: the deterministic cost-capped PR gate (ADR-026) = the FULL retrieval suite
+  (~5 LLM calls — the answerable slice is LLM-free) + the 10 routing cases flagged
+  `"subset": true` in routing.jsonl (all 6 hard cases — they exist because they caught real
+  bugs — plus one easy case per specialist and the ticket-update path). e2e and dedup are
+  nightly-only. No random sampling: CI runs must be comparable run-to-run.
+- a GitHub job-summary writer: when $GITHUB_STEP_SUMMARY is set (any Actions run), the
+  per-suite metrics tables are appended there as markdown.
 
 Scoring mirrors the two-stage refusal cascade (ADR-017):
 - ANSWERABLE cases run DIRECTLY against rag.hybrid_search — no LLM in the loop (the only
@@ -28,16 +37,15 @@ only now exists) runs every case through the ROUTER with real tools against the 
 - the multi-intent case must fire BOTH knowledge tools in a single run.
 Use `--suite retrieval` alone for the cheap (LLM-free answerable path) tuning loop.
 """
-# Retrieval suite implemented in M1; routing suite in M2. TODO(M4): e2e suite (side-effect
-# assertions against a scratch DB), --subset flag for CI.
+# Retrieval suite implemented in M1; routing in M2; e2e + dedup + --subset + thresholds.toml
+# + job summary in M4.
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import json
+import os
 import sys
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -53,21 +61,17 @@ from app.config import get_settings  # noqa: E402
 from app.db.database import SessionLocal  # noqa: E402
 from app.db.models import Order, Ticket, TicketComment  # noqa: E402
 from app.rag.hybrid_search import hybrid_search, top_cosine  # noqa: E402
+from evals.common import DATASET_DIR, EVAL_USER, FLOORS, load_jsonl as _load_jsonl  # noqa: E402
 from evals.metrics import dedupe_preserving_order, mrr, recall_at_k  # noqa: E402
+from evals.suite_dedup import run_dedup  # noqa: E402
+from evals.suite_e2e import run_e2e  # noqa: E402
 
-DATASET_DIR = Path(__file__).parent / "datasets"
-
-# Acceptance thresholds (M1/M2). M4 turns these into regression gates derived from the baseline.
-RECALL_AT_5_FLOOR = 0.8
-REFUSAL_ACCURACY_FLOOR = 1.0
-ROUTING_ACCURACY_FLOOR = 0.9
-
-# The routing suite exercises ACTION agents; they act as this (seeded) user.
-EVAL_USER = "demo.user@corp.com"
-
-
-def _load_jsonl(path: Path) -> list[dict]:
-    return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+# Floors come from evals/thresholds.toml (ADR-026) — regression gates below observed variance.
+RECALL_AT_5_FLOOR = FLOORS["retrieval"]["recall_at_5"]
+REFUSAL_ACCURACY_FLOOR = FLOORS["retrieval"]["refusal_accuracy"]
+FALSE_REFUSALS_MAX = FLOORS["retrieval"]["false_refusals_max"]
+ROUTING_ACCURACY_FLOOR = FLOORS["routing"]["accuracy"]
+ROUTING_INTEGRITY_FAILURES_MAX = FLOORS["routing"]["integrity_failures_max"]
 
 
 def _agent_refused(answer: str) -> bool:
@@ -83,9 +87,10 @@ async def _run_refusal_case(query: str) -> tuple[bool, str]:
 
 
 def run_retrieval(
-    k: int = 5, threshold: float | None = None, refusal_mode: str = "agent"
+    k: int = 5, threshold: float | None = None, refusal_mode: str = "agent", **_ignored
 ) -> dict:
     """Run the retrieval suite; returns a report dict (printed by main, reused by M4 CI).
+    Deliberately has no subset mode: at ~5 LLM calls it is already the cheap suite (ADR-026).
 
     refusal_mode: "agent" (default; the real cascade) or "retrieval" (stage 1 only, LLM-free —
     used by --sweep and anywhere an API key is unavailable).
@@ -155,7 +160,7 @@ def run_retrieval(
     report["passed"] = (
         report["aggregates"]["recall_at_k"] >= RECALL_AT_5_FLOOR
         and report["aggregates"]["refusal_accuracy"] >= REFUSAL_ACCURACY_FLOOR
-        and report["aggregates"]["false_refusals"] == 0
+        and report["aggregates"]["false_refusals"] <= FALSE_REFUSALS_MAX
     )
     return report
 
@@ -209,9 +214,16 @@ async def _routing_case(case: dict) -> dict:
     }
 
 
-def run_routing(**_ignored) -> dict:
-    """Run the routing suite; retrieval-suite kwargs (k/threshold/refusal_mode) don't apply."""
+def run_routing(subset: bool = False, **_ignored) -> dict:
+    """Run the routing suite; retrieval-suite kwargs (k/threshold/refusal_mode) don't apply.
+
+    subset=True keeps only the cases flagged `"subset": true` in routing.jsonl — the
+    deterministic PR gate (ADR-026): all 6 hard cases + one easy case per specialist + the
+    ticket-update path. Selection lives in the dataset, so it never depends on run order.
+    """
     cases = _load_jsonl(DATASET_DIR / "routing.jsonl")
+    if subset:
+        cases = [c for c in cases if c.get("subset")]
 
     # Action agents write to the seeded DB during eval runs; snapshot + delete keeps it pristine.
     with SessionLocal() as s:
@@ -226,7 +238,9 @@ def run_routing(**_ignored) -> dict:
         rows = asyncio.run(_all())
     finally:
         with SessionLocal() as s:
-            for c in s.scalars(select(TicketComment).where(TicketComment.id.notin_(before_comments))):
+            for c in s.scalars(
+                select(TicketComment).where(TicketComment.id.notin_(before_comments))
+            ):
                 s.delete(c)
             for t in s.scalars(select(Ticket).where(Ticket.id.notin_(before_tickets))):
                 s.delete(t)
@@ -255,17 +269,19 @@ def run_routing(**_ignored) -> dict:
         },
     }
     agg = report["aggregates"]
+    report["subset"] = subset
     report["passed"] = (
         agg["accuracy"] >= ROUTING_ACCURACY_FLOOR
-        and agg["integrity_failures"] == 0
+        and agg["integrity_failures"] <= ROUTING_INTEGRITY_FAILURES_MAX
         and agg["multi_intent_ok"] is not False
     )
     return report
 
 
-SUITES = {"retrieval": run_retrieval, "routing": run_routing}
-# TODO(M4): SUITES["e2e"] — side-effect assertions (right rows for the right user) against a
-# scratch DB (ADR-010), plus --subset for cost-capped CI.
+# e2e (side-effect assertions through the live HTTP API, ADR-027) and dedup (the ADR-021
+# gray-band judgment eval, ADR-028) live in their own modules; both are nightly-only suites.
+SUITES = {"retrieval": run_retrieval, "routing": run_routing, "e2e": run_e2e, "dedup": run_dedup}
+SUBSET_SUITES = ("retrieval", "routing")  # the PR gate: e2e + dedup stay nightly (ADR-026)
 
 
 def _print_retrieval_report(report: dict) -> None:
@@ -324,7 +340,140 @@ def _print_routing_report(report: dict) -> None:
     )
 
 
-_PRINTERS = {"retrieval": _print_retrieval_report, "routing": _print_routing_report}
+def _print_e2e_report(report: dict) -> None:
+    print("\n=== e2e suite (side effects through the live HTTP API) ===")
+    header = f"{'flow':<18} {'result':<6}  detail"
+    print(header)
+    print("-" * 100)
+    for r in report["rows"]:
+        print(f"{r['flow']:<18} {'PASS' if r['ok'] else 'FAIL':<6}  {r['detail']}")
+    agg = report["aggregates"]
+    print("-" * 100)
+    print(
+        f"flows: {agg['flows_passed']}/{agg['n']} "
+        f"(floor {FLOORS['e2e']['flow_pass_rate']:.2f} pass rate) | "
+        f"suite: {'PASS' if report['passed'] else 'FAIL'}"
+    )
+
+
+def _print_dedup_report(report: dict) -> None:
+    print("\n=== dedup suite (ADR-021 gray-band judgment, incident agent with real tools) ===")
+    header = f"{'report':<56} {'kind':<5} {'action':<8} {'top_sim':>7}  result"
+    print(header)
+    print("-" * len(header))
+    for r in report["rows"]:
+        sim = f"{r['top_similarity']:.3f}" if r["top_similarity"] is not None else "—"
+        flag = "PASS" if r["ok"] else "FAIL"
+        if r["kind"] == "link" and r["action"] == "linked" and not r["ok"]:
+            flag += " (linked to wrong group)"
+        print(f"{r['report'][:56]:<56} {r['kind']:<5} {r['action']:<8} {sim:>7}  {flag}")
+    agg = report["aggregates"]
+    print("-" * len(header))
+    link = f"{agg['link_accuracy']:.3f}" if agg["link_accuracy"] is not None else "—"
+    trap = f"{agg['trap_accuracy']:.3f}" if agg["trap_accuracy"] is not None else "—"
+    print(
+        f"link accuracy: {link} ({agg['n_link']} probes) | "
+        f"trap accuracy: {trap} ({agg['n_trap']} traps) | "
+        f"overall: {agg['accuracy']:.3f} (floor {FLOORS['dedup']['accuracy']}) | "
+        f"suite: {'PASS' if report['passed'] else 'FAIL'}"
+    )
+
+
+_PRINTERS = {
+    "retrieval": _print_retrieval_report,
+    "routing": _print_routing_report,
+    "e2e": _print_e2e_report,
+    "dedup": _print_dedup_report,
+}
+
+
+# --- GitHub job summary (M4): markdown metrics tables for $GITHUB_STEP_SUMMARY ---------------
+
+
+def _summary_rows(report: dict) -> list[tuple[str, str, str, str]]:
+    """(suite, metric, value, floor) rows for the markdown summary table."""
+    agg = report["aggregates"]
+    if report["suite"] == "retrieval":
+        return [
+            ("retrieval", "recall@5", f"{agg['recall_at_k']:.3f}", f"≥ {RECALL_AT_5_FLOOR}"),
+            ("retrieval", "MRR", f"{agg['mrr']:.3f}", "—"),
+            (
+                "retrieval",
+                "refusal accuracy",
+                f"{agg['refusal_accuracy']:.3f}",
+                f"≥ {REFUSAL_ACCURACY_FLOOR}",
+            ),
+            ("retrieval", "false refusals", str(agg["false_refusals"]), f"≤ {FALSE_REFUSALS_MAX}"),
+        ]
+    if report["suite"] == "routing":
+        n = f" (subset, n={agg['n']})" if report.get("subset") else f" (n={agg['n']})"
+        hard = f"{agg['hard_accuracy']:.3f}" if agg["hard_accuracy"] is not None else "—"
+        return [
+            ("routing" + n, "accuracy", f"{agg['accuracy']:.3f}", f"≥ {ROUTING_ACCURACY_FLOOR}"),
+            ("routing" + n, "hard-case accuracy", hard, "—"),
+            (
+                "routing" + n,
+                "ping-pong mean/max",
+                f"{agg['ping_pong_mean']:.2f}/{agg['ping_pong_max']}",
+                "—",
+            ),
+            (
+                "routing" + n,
+                "integrity failures",
+                str(agg["integrity_failures"]),
+                f"≤ {ROUTING_INTEGRITY_FAILURES_MAX}",
+            ),
+        ]
+    if report["suite"] == "e2e":
+        rows = [
+            (
+                "e2e",
+                "flows passed",
+                f"{agg['flows_passed']}/{agg['n']}",
+                f"≥ {FLOORS['e2e']['flow_pass_rate']:.2f} rate",
+            )
+        ]
+        rows += [("e2e", r["flow"], "PASS" if r["ok"] else "FAIL", "—") for r in report["rows"]]
+        return rows
+    if report["suite"] == "dedup":
+        link = f"{agg['link_accuracy']:.3f}" if agg["link_accuracy"] is not None else "—"
+        trap = f"{agg['trap_accuracy']:.3f}" if agg["trap_accuracy"] is not None else "—"
+        return [
+            (
+                "dedup",
+                "gray-band accuracy",
+                f"{agg['accuracy']:.3f}",
+                f"≥ {FLOORS['dedup']['accuracy']}",
+            ),
+            ("dedup", "link accuracy", link, "—"),
+            ("dedup", "trap accuracy", trap, "—"),
+        ]
+    return []
+
+
+def _write_github_summary(reports: list[dict]) -> None:
+    """Append the metrics table to the GitHub Actions job summary, if we are in one."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path:
+        return
+    lines = [
+        "## Eval metrics",
+        "",
+        "| suite | metric | value | floor |",
+        "|---|---|---|---|",
+    ]
+    for report in reports:
+        for suite, metric, value, floor in _summary_rows(report):
+            lines.append(f"| {suite} | {metric} | {value} | {floor} |")
+    lines.append("")
+    verdict = (
+        "✅ all suites passed"
+        if all(r["passed"] for r in reports)
+        else "❌ FAILED: " + ", ".join(r["suite"] for r in reports if not r["passed"])
+    )
+    lines += [verdict, ""]
+    with open(path, "a") as f:
+        f.write("\n".join(lines))
 
 
 def _sweep(lo: float, hi: float, step: float) -> None:
@@ -344,6 +493,12 @@ def _sweep(lo: float, hi: float, step: float) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=SUITES, action="append", help="default: all suites")
+    parser.add_argument(
+        "--subset",
+        action="store_true",
+        help="cost-capped PR gate (ADR-026): full retrieval + the 10 flagged routing cases; "
+        "e2e and dedup are skipped (nightly-only). Overrides --suite.",
+    )
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--threshold", type=float, help="override stage-1 threshold (tuning)")
     parser.add_argument(
@@ -359,11 +514,31 @@ def main() -> int:
         _sweep(*args.sweep)
         return 0
 
+    suite_names = list(SUBSET_SUITES) if args.subset else (args.suite or list(SUITES))
     ok = True
-    for name in args.suite or list(SUITES):
-        report = SUITES[name](k=args.k, threshold=args.threshold, refusal_mode=args.refusal_mode)
+    reports = []
+    for name in suite_names:
+        report = SUITES[name](
+            k=args.k,
+            threshold=args.threshold,
+            refusal_mode=args.refusal_mode,
+            subset=args.subset,
+        )
         _PRINTERS[report["suite"]](report)
+        reports.append(report)
         ok = ok and report["passed"]
+
+    if args.subset:
+        routing_n = next((r["aggregates"]["n"] for r in reports if r["suite"] == "routing"), 0)
+        refusal_n = next(
+            (r["aggregates"]["n_refusal"] for r in reports if r["suite"] == "retrieval"), 0
+        )
+        print(
+            f"\nsubset cost: {routing_n} routing agent runs + {refusal_n} refusal agent runs "
+            f"(gpt-5-mini) + ~30 query embeddings — ≈ $0.02–0.05 per run at 2026-07 prices"
+        )
+
+    _write_github_summary(reports)
     return 0 if ok else 1
 
 

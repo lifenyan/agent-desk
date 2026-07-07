@@ -41,7 +41,9 @@ class Settings(BaseSettings):
     # paraphrases OVERLAP the near-miss band — so 0.75 = midpoint of the only separable gap.
     # A false HIT serves the wrong answer; a false miss just re-runs the agent.
     semantic_cache_threshold: float = 0.75
-    semantic_cache_ttl_seconds: int = 86_400  # 24 h — KB answers go stale slowly (+ ingest invalidation)
+    semantic_cache_ttl_seconds: int = (
+        86_400  # 24 h — KB answers go stale slowly (+ ingest invalidation)
+    )
     response_cache_ttl_seconds: int = 300  # 5 min — catalog/asset reads (ADR-025)
 
     # --- observability (M6) ---

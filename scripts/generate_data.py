@@ -37,16 +37,65 @@ GEN_MODEL = os.environ.get("GEN_MODEL", "gpt-4o-mini")
 CHUNK_WORDS = 350  # ~500 tokens
 
 FIRST_NAMES = [
-    "Alex", "Jordan", "Taylor", "Casey", "Riley", "Morgan", "Jamie", "Avery", "Quinn", "Sam",
-    "Dana", "Priya", "Wei", "Diego", "Fatima", "Noah", "Mia", "Liam", "Sofia", "Omar",
-    "Hana", "Leo", "Nina", "Raj", "Elena", "Kofi", "Yuki", "Ivan", "Grace", "Tom",
+    "Alex",
+    "Jordan",
+    "Taylor",
+    "Casey",
+    "Riley",
+    "Morgan",
+    "Jamie",
+    "Avery",
+    "Quinn",
+    "Sam",
+    "Dana",
+    "Priya",
+    "Wei",
+    "Diego",
+    "Fatima",
+    "Noah",
+    "Mia",
+    "Liam",
+    "Sofia",
+    "Omar",
+    "Hana",
+    "Leo",
+    "Nina",
+    "Raj",
+    "Elena",
+    "Kofi",
+    "Yuki",
+    "Ivan",
+    "Grace",
+    "Tom",
 ]
 LAST_NAMES = [
-    "Reyes", "Chen", "Patel", "Kim", "Nguyen", "Garcia", "Okafor", "Rossi", "Haddad", "Silva",
-    "Novak", "Ali", "Brown", "Ivanov", "Suzuki", "Meyer", "Costa", "Khan", "Park", "Diaz",
+    "Reyes",
+    "Chen",
+    "Patel",
+    "Kim",
+    "Nguyen",
+    "Garcia",
+    "Okafor",
+    "Rossi",
+    "Haddad",
+    "Silva",
+    "Novak",
+    "Ali",
+    "Brown",
+    "Ivanov",
+    "Suzuki",
+    "Meyer",
+    "Costa",
+    "Khan",
+    "Park",
+    "Diaz",
 ]
 MODELS = {
-    ("macos", "laptop"): ["MacBook Pro 16 (2024)", "MacBook Air 13 (2023)", "MacBook Pro 14 (2023)"],
+    ("macos", "laptop"): [
+        "MacBook Pro 16 (2024)",
+        "MacBook Air 13 (2023)",
+        "MacBook Pro 14 (2023)",
+    ],
     ("windows", "laptop"): ["Dell Latitude 5450", "Lenovo ThinkPad X1 Carbon", "HP EliteBook 840"],
     ("linux", "laptop"): ["Dell XPS 13 (Ubuntu)", "System76 Lemur Pro"],
     ("macos", "desktop"): ["Mac Studio (2023)", "iMac 24 (2023)"],
@@ -74,7 +123,9 @@ def _write(name: str, payload, *, force: bool, subdir: Path = DATA_DIR) -> bool:
     subdir.mkdir(parents=True, exist_ok=True)
     text = payload if isinstance(payload, str) else json.dumps(payload, indent=2)
     path.write_text(text + ("\n" if not text.endswith("\n") else ""))
-    print(f"  wrote {path.relative_to(ROOT)} ({len(payload) if isinstance(payload, list) else '-'} rows)")
+    print(
+        f"  wrote {path.relative_to(ROOT)} ({len(payload) if isinstance(payload, list) else '-'} rows)"
+    )
     return True
 
 
@@ -106,8 +157,10 @@ def stage1(force: bool) -> None:
     tax_path = DATA_DIR / "taxonomy.json"
     if tax_path.exists() and not force:
         tax = json.loads(tax_path.read_text())
-        print(f"  using existing taxonomy.json "
-              f"({len(tax['articles'])} articles, {len(tax['catalog_items'])} catalog items)")
+        print(
+            f"  using existing taxonomy.json "
+            f"({len(tax['articles'])} articles, {len(tax['catalog_items'])} catalog items)"
+        )
         print("  -> review it, then run Stage 2.")
         return
     raise SystemExit(
@@ -148,18 +201,30 @@ def _gen_articles(tax: dict, *, force: bool, dry: bool) -> None:
             dry=dry,
         )
         aid = stable_id("article", slug)
-        articles.append({
-            "id": aid, "title": a["title"], "body": body,
-            "category": a["category"], "doc_type": a.get("doc_type", "howto"),
-            "version": a.get("version"), "status": a.get("status", "published"),
-        })
+        articles.append(
+            {
+                "id": aid,
+                "title": a["title"],
+                "body": body,
+                "category": a["category"],
+                "doc_type": a.get("doc_type", "howto"),
+                "version": a.get("version"),
+                "status": a.get("status", "published"),
+            }
+        )
         for i, content in enumerate(_chunk(body)):
-            chunks.append({
-                "id": stable_id("chunk", f"{slug}:{i}"), "article_id": aid,
-                "chunk_index": i, "content": content,
-                "category": a["category"], "doc_type": a.get("doc_type", "howto"),
-                "status": a.get("status", "published"), "version": a.get("version"),
-            })
+            chunks.append(
+                {
+                    "id": stable_id("chunk", f"{slug}:{i}"),
+                    "article_id": aid,
+                    "chunk_index": i,
+                    "content": content,
+                    "category": a["category"],
+                    "doc_type": a.get("doc_type", "howto"),
+                    "status": a.get("status", "published"),
+                    "version": a.get("version"),
+                }
+            )
         if not dry and n % 25 == 0:
             print(f"    ...{n}/{total} article bodies")
     _write("knowledge_articles.json", articles, force=force)
@@ -168,23 +233,51 @@ def _gen_articles(tax: dict, *, force: bool, dry: bool) -> None:
 
 def _default_form_schema(item: dict) -> list[dict]:
     """Generic form from autofillable profile/asset fields + one free-text justification."""
-    fields = [{"name": "cost_center", "label": "Cost center", "type": "select",
-               "options": ["sales", "engineering", "finance", "hr"], "required": True,
-               "autofill": "user.org"}]
+    fields = [
+        {
+            "name": "cost_center",
+            "label": "Cost center",
+            "type": "select",
+            "options": ["sales", "engineering", "finance", "hr"],
+            "required": True,
+            "autofill": "user.org",
+        }
+    ]
     if item.get("os_compat") and len(item["os_compat"]) > 1:
-        fields.append({"name": "os_variant", "label": "OS variant", "type": "select",
-                       "options": item["os_compat"], "required": True, "autofill": "asset.os"})
+        fields.append(
+            {
+                "name": "os_variant",
+                "label": "OS variant",
+                "type": "select",
+                "options": item["os_compat"],
+                "required": True,
+                "autofill": "asset.os",
+            }
+        )
     if float(item["price"]) > 500:
-        fields.append({"name": "business_justification", "label": "Business justification",
-                       "type": "text", "required": True, "autofill": None})
+        fields.append(
+            {
+                "name": "business_justification",
+                "label": "Business justification",
+                "type": "text",
+                "required": True,
+                "autofill": None,
+            }
+        )
     return fields
 
 
 def _gen_catalog(tax: dict, *, force: bool) -> None:
-    items = [{
-        "id": stable_id("catalog", c["slug"]), "name": c["name"], "price": c["price"],
-        "os_compat": c.get("os_compat"), "form_schema": _default_form_schema(c),
-    } for c in tax["catalog_items"]]
+    items = [
+        {
+            "id": stable_id("catalog", c["slug"]),
+            "name": c["name"],
+            "price": c["price"],
+            "os_compat": c.get("os_compat"),
+            "form_schema": _default_form_schema(c),
+        }
+        for c in tax["catalog_items"]
+    ]
     _write("catalog_items.json", items, force=force)
 
 
@@ -245,7 +338,9 @@ def _gen_people(tax: dict, *, force: bool) -> tuple[list[dict], list[dict]]:
     return users, assets
 
 
-def _gen_tickets(tax: dict, users: list[dict], assets: list[dict], *, force: bool, dry: bool) -> None:
+def _gen_tickets(
+    tax: dict, users: list[dict], assets: list[dict], *, force: bool, dry: bool
+) -> None:
     rnd = random.Random(RANDOM_SEED + 1)
     by_user_laptop = {}
     for a in assets:
@@ -261,16 +356,26 @@ def _gen_tickets(tax: dict, users: list[dict], assets: list[dict], *, force: boo
     def desc(title, category, ttype):
         return _llm_text(
             f"Write a first-person IT {ttype} ticket description (2-4 sentences) for: '{title}' "
-            f"(category: {category}). Realistic employee voice, no salutation.", dry=dry)
+            f"(category: {category}). Realistic employee voice, no salutation.",
+            dry=dry,
+        )
 
     def add_ticket(slug, title, ttype, category, priority, status, reporter, set_asset=False):
         tid = stable_id("ticket", slug)
         asset_id = by_user_laptop.get(reporter["id"]) if set_asset else None
-        tickets.append({
-            "id": tid, "user_id": reporter["id"], "asset_id": asset_id, "type": ttype,
-            "title": title, "description": desc(title, category, ttype),
-            "category": category, "priority": priority, "status": status,
-        })
+        tickets.append(
+            {
+                "id": tid,
+                "user_id": reporter["id"],
+                "asset_id": asset_id,
+                "type": ttype,
+                "title": title,
+                "description": desc(title, category, ttype),
+                "category": category,
+                "priority": priority,
+                "status": status,
+            }
+        )
         return tid
 
     # Clusters (dedup demos)
@@ -282,16 +387,27 @@ def _gen_tickets(tax: dict, users: list[dict], assets: list[dict], *, force: boo
         for i, title in enumerate(titles):
             reporter = rnd.choice(pool)
             status = cl.get("status") or rnd.choice(statuses)
-            tid = add_ticket(f"{cl['slug']}:{i}", title, cl["type"], cl["category"],
-                             cl["priority"], status, reporter, set_asset=(cl["slug"] == "slow-laptop"))
+            tid = add_ticket(
+                f"{cl['slug']}:{i}",
+                title,
+                cl["type"],
+                cl["category"],
+                cl["priority"],
+                status,
+                reporter,
+                set_asset=(cl["slug"] == "slow-laptop"),
+            )
             if i == 0:
                 canonical_id = tid
         # it_agent dedup-link comment on the canonical
-        comments.append({
-            "id": stable_id("comment", f"{cl['slug']}:dedup"), "ticket_id": canonical_id,
-            "author_id": it_bot["id"],
-            "body": f"Linked {len(titles) - 1} duplicate report(s) to this ticket (dedup).",
-        })
+        comments.append(
+            {
+                "id": stable_id("comment", f"{cl['slug']}:dedup"),
+                "ticket_id": canonical_id,
+                "author_id": it_bot["id"],
+                "body": f"Linked {len(titles) - 1} duplicate report(s) to this ticket (dedup).",
+            }
+        )
 
     # Remainder spread across categories
     categories = ["accounts", "software", "hardware", "network", "email", "other"]
@@ -312,28 +428,62 @@ def _gen_tickets(tax: dict, users: list[dict], assets: list[dict], *, force: boo
         title = f"{cat.title()} issue: {rnd.choice(_TITLE_SNIPPETS[cat])}"
         tid = add_ticket(f"filler:{i}", title, ttype, cat, priority, status, reporter, set_asset)
         if status in ("resolved", "closed") and rnd.random() < 0.25:
-            comments.append({
-                "id": stable_id("comment", f"filler:{i}"), "ticket_id": tid,
-                "author_id": it_bot["id"], "body": "Resolved — see linked KB article for steps.",
-            })
+            comments.append(
+                {
+                    "id": stable_id("comment", f"filler:{i}"),
+                    "ticket_id": tid,
+                    "author_id": it_bot["id"],
+                    "body": "Resolved — see linked KB article for steps.",
+                }
+            )
 
     _write("tickets.json", tickets, force=force)
     _write("ticket_comments.json", comments, force=force)
 
 
 _TITLE_SNIPPETS = {
-    "accounts": ["can't access shared drive", "MFA prompt loop", "locked out after PTO",
-                 "need group access", "SSO redirect fails"],
-    "software": ["app won't launch", "license expired", "update stuck", "add-in disabled",
-                 "install request"],
-    "hardware": ["docking station not detected", "keyboard keys sticking", "battery drains fast",
-                 "monitor no signal", "webcam not working"],
-    "network": ["Wi-Fi keeps dropping", "can't reach internal site", "slow connection",
-                "VPN certificate error", "DNS not resolving"],
-    "email": ["not receiving external mail", "calendar not syncing", "quota exceeded",
-              "distribution list request", "signature not applying"],
-    "other": ["onboarding setup", "desk move IT request", "accessibility tool request",
-              "general how-to question", "feedback on service"],
+    "accounts": [
+        "can't access shared drive",
+        "MFA prompt loop",
+        "locked out after PTO",
+        "need group access",
+        "SSO redirect fails",
+    ],
+    "software": [
+        "app won't launch",
+        "license expired",
+        "update stuck",
+        "add-in disabled",
+        "install request",
+    ],
+    "hardware": [
+        "docking station not detected",
+        "keyboard keys sticking",
+        "battery drains fast",
+        "monitor no signal",
+        "webcam not working",
+    ],
+    "network": [
+        "Wi-Fi keeps dropping",
+        "can't reach internal site",
+        "slow connection",
+        "VPN certificate error",
+        "DNS not resolving",
+    ],
+    "email": [
+        "not receiving external mail",
+        "calendar not syncing",
+        "quota exceeded",
+        "distribution list request",
+        "signature not applying",
+    ],
+    "other": [
+        "onboarding setup",
+        "desk move IT request",
+        "accessibility tool request",
+        "general how-to question",
+        "feedback on service",
+    ],
 }
 
 
@@ -344,19 +494,37 @@ def _gen_orders(tax: dict, users: list[dict], assets: list[dict], *, force: bool
 
     def order(slug, user, item_slug, status, approval, values):
         return {
-            "id": stable_id("order", slug), "user_id": user["id"],
-            "item_id": stable_id("catalog", item_slug), "status": status,
-            "approval_state": approval, "form_values": values,
+            "id": stable_id("order", slug),
+            "user_id": user["id"],
+            "item_id": stable_id("catalog", item_slug),
+            "status": status,
+            "approval_state": approval,
+            "form_values": values,
         }
 
     orders = [
         # HITL anchor: Photoshop ($650) awaiting Morgan's approval.
-        order("demo-photoshop", demo, "photoshop", "submitted", "pending",
-              {"cost_center": "sales", "os_variant": "macos",
-               "business_justification": "Editing marketing collateral for Q3 launch."}),
+        order(
+            "demo-photoshop",
+            demo,
+            "photoshop",
+            "submitted",
+            "pending",
+            {
+                "cost_center": "sales",
+                "os_variant": "macos",
+                "business_justification": "Editing marketing collateral for Q3 launch.",
+            },
+        ),
         # A cheap, already-fulfilled order (no approval needed).
-        order("demo-onepassword", demo, "onepassword", "fulfilled", "not_required",
-              {"cost_center": "sales"}),
+        order(
+            "demo-onepassword",
+            demo,
+            "onepassword",
+            "fulfilled",
+            "not_required",
+            {"cost_center": "sales"},
+        ),
     ]
     # A few more across employees (mix of states), deterministic.
     rnd = random.Random(RANDOM_SEED + 2)
@@ -366,8 +534,9 @@ def _gen_orders(tax: dict, users: list[dict], assets: list[dict], *, force: bool
     for i, u in enumerate(emps):
         if i % 3 == 0:
             item = rnd.choice(pricey)
-            st, appr = rnd.choice([("submitted", "pending"), ("fulfilled", "approved"),
-                                   ("cancelled", "rejected")])
+            st, appr = rnd.choice(
+                [("submitted", "pending"), ("fulfilled", "approved"), ("cancelled", "rejected")]
+            )
         else:
             item, st, appr = rnd.choice(cheap), rnd.choice(["fulfilled", "draft"]), "not_required"
         orders.append(order(f"emp:{i}", u, item, st, appr, {"cost_center": u["org"]}))
@@ -378,13 +547,30 @@ def _gen_facts(users: list[dict], *, force: bool) -> None:
     """Seed long-term memory, anchored by demo.user's device_os fact (the memory demo)."""
     demo = next(u for u in users if u["email"] == "demo.user@corp.com")
     facts = [
-        {"id": stable_id("fact", "demo:device_os"), "user_id": demo["id"], "fact_type": "device_os",
-         "fact": "Owns a MacBook Pro 16 (macOS).", "source": "seed", "confidence": 0.95},
-        {"id": stable_id("fact", "demo:org"), "user_id": demo["id"], "fact_type": "org",
-         "fact": "Works in the Sales organization.", "source": "seed", "confidence": 0.9},
-        {"id": stable_id("fact", "demo:contact"), "user_id": demo["id"],
-         "fact_type": "contact_preference", "fact": "Prefers email over Slack.",
-         "source": "seed", "confidence": 0.6},
+        {
+            "id": stable_id("fact", "demo:device_os"),
+            "user_id": demo["id"],
+            "fact_type": "device_os",
+            "fact": "Owns a MacBook Pro 16 (macOS).",
+            "source": "seed",
+            "confidence": 0.95,
+        },
+        {
+            "id": stable_id("fact", "demo:org"),
+            "user_id": demo["id"],
+            "fact_type": "org",
+            "fact": "Works in the Sales organization.",
+            "source": "seed",
+            "confidence": 0.9,
+        },
+        {
+            "id": stable_id("fact", "demo:contact"),
+            "user_id": demo["id"],
+            "fact_type": "contact_preference",
+            "fact": "Prefers email over Slack.",
+            "source": "seed",
+            "confidence": 0.6,
+        },
     ]
     _write("user_facts.json", facts, force=force)
 
@@ -394,15 +580,27 @@ def _gen_evalset(tax: dict, *, force: bool) -> None:
     plan = tax["retrieval_eval_plan"]
     lines = []
     for r in plan["answerable"]:
-        lines.append(json.dumps({
-            "query": r["query"],
-            "expected_article_ids": [stable_id("article", s) for s in r["expected_article_slugs"]],
-        }))
+        lines.append(
+            json.dumps(
+                {
+                    "query": r["query"],
+                    "expected_article_ids": [
+                        stable_id("article", s) for s in r["expected_article_slugs"]
+                    ],
+                }
+            )
+        )
     for r in plan["refusal"]:
-        lines.append(json.dumps({
-            "query": r["query"], "expected_article_ids": [], "refusal": True,
-            "negative_space": r["negative_space"],
-        }))
+        lines.append(
+            json.dumps(
+                {
+                    "query": r["query"],
+                    "expected_article_ids": [],
+                    "refusal": True,
+                    "negative_space": r["negative_space"],
+                }
+            )
+        )
     _write("retrieval.jsonl", "\n".join(lines), force=force, subdir=EVAL_DIR)
 
 
@@ -416,8 +614,10 @@ def _gen_positive_space(tax: dict, *, force: bool) -> None:
         slugs = r["expected_article_slugs"]
         case = {
             "query": r["query"],
-            "expected_articles": [{"slug": s, "title": by_slug[s]["title"],
-                                   "category": by_slug[s]["category"]} for s in slugs],
+            "expected_articles": [
+                {"slug": s, "title": by_slug[s]["title"], "category": by_slug[s]["category"]}
+                for s in slugs
+            ],
         }
         note = r.get("note") or by_slug[slugs[0]].get("anchor")
         if note:
@@ -425,9 +625,9 @@ def _gen_positive_space(tax: dict, *, force: bool) -> None:
         cases.append(case)
     payload = {
         "_comment": "Positive-space memo (mirror of negative_space.json): queries that SHOULD "
-                    "retrieve a specific article, with the expected match. Human reference so the "
-                    "demo/eval intent isn't forgotten. Derived from taxonomy.json's "
-                    "retrieval_eval_plan; machine-checkable version = evals/datasets/retrieval.jsonl.",
+        "retrieve a specific article, with the expected match. Human reference so the "
+        "demo/eval intent isn't forgotten. Derived from taxonomy.json's "
+        "retrieval_eval_plan; machine-checkable version = evals/datasets/retrieval.jsonl.",
         "matched_cases": cases,
     }
     _write("positive_space.json", payload, force=force)
