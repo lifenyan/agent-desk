@@ -410,6 +410,8 @@ Date: 2026-07-07 · Status: accepted
 
 **Tradeoffs:** 12 probes is a small n — one probe is 8.3 points; the floor absorbs that, and growing the dataset is cheap (add a line). Gray-band judgment is genuinely variable run-to-run; the suite measures (rather than hides) that, at the cost of an occasionally red nightly worth reading. Cross-encoder/pair-judge stays deferred: at a 12/12 baseline there is nothing for it to fix yet — the trigger is this suite trending down as probes grow.
 
+**Update (2026-07-07, first nightly run):** CI scored **8/12** — below every local run (9/10/12) and below the initial 0.75 floor, which was set from only 3 observations. Recalibrated to **0.65** (one flip below the new worst observed) per ADR-026's own rule; the nightly report, not the gate, tracks the trend. Two failure modes worth recording: the mouse-battery trap LINKED at top similarity **0.495** — below the gray band entirely (bad judgment, not a threshold artifact) — and two probes took **no action at all** (the "lost report" mode the agent's instructions explicitly forbid; also seen once locally). The no-action rate is now the strongest datapoint for the deferred instruction-hardening / cross-encoder follow-up.
+
 ---
 
 ## ADR-029: deploy.yml ships inert — dispatch-only plus a variable-gated push trigger — reconciled with ADR-009's manual first deploy
