@@ -1,0 +1,800 @@
+[
+  {
+    "id": "35975a7e-2245-5836-8477-7472ffdbc540",
+    "user_id": "985917b7-ae40-577f-9d96-80db07adb580",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "d1dc034b-146e-5430-a2e8-37de0bdea9c0",
+    "user_id": "b383b1aa-6ec2-52f8-952f-7b4532e0b899",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "36cd2f42-4fe8-5a70-b362-ac5b95745c76",
+    "user_id": "6b27c012-5f15-5ead-a0c7-5c45a58a980e",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Lenovo ThinkPad X1 Carbon"
+  },
+  {
+    "id": "64914851-810a-51b4-aeb6-ed0947026154",
+    "user_id": "4b8c90d1-2971-5da1-8839-42a394395f2d",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Air 13 (2023)"
+  },
+  {
+    "id": "766d91fb-ac8a-56b9-8ce6-efeb4088354e",
+    "user_id": "4b8c90d1-2971-5da1-8839-42a394395f2d",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "77d647ba-01f0-543b-a3eb-95c850c5047a",
+    "user_id": "4b8c90d1-2971-5da1-8839-42a394395f2d",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 15"
+  },
+  {
+    "id": "9d401030-ade9-51a7-a511-38eb733763c4",
+    "user_id": "63fe9d50-6114-5a1a-b9d4-a6093a95871b",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Air 13 (2023)"
+  },
+  {
+    "id": "98cc0cff-f092-5424-a2db-002ad5a54d8f",
+    "user_id": "108d0f3e-3b2d-5edb-8665-e8c4abcfa67c",
+    "type": "laptop",
+    "os": "linux",
+    "model": "Dell XPS 13 (Ubuntu)"
+  },
+  {
+    "id": "b996a43e-2efe-5247-a835-f4f561590400",
+    "user_id": "108d0f3e-3b2d-5edb-8665-e8c4abcfa67c",
+    "type": "phone",
+    "os": "linux",
+    "model": "Google Pixel 8"
+  },
+  {
+    "id": "3244c781-58df-545a-b596-2a2e15a51e62",
+    "user_id": "17f569b1-03dc-584e-8ecd-01dd55a0ac3b",
+    "type": "laptop",
+    "os": "linux",
+    "model": "Dell XPS 13 (Ubuntu)"
+  },
+  {
+    "id": "5f02a1f6-e927-55c8-944f-3226a4bc6cd5",
+    "user_id": "17f569b1-03dc-584e-8ecd-01dd55a0ac3b",
+    "type": "phone",
+    "os": "linux",
+    "model": "Google Pixel 8"
+  },
+  {
+    "id": "e3a80a26-fcfa-5303-a00e-f485c15b17f2",
+    "user_id": "17f569b1-03dc-584e-8ecd-01dd55a0ac3b",
+    "type": "monitor",
+    "os": "linux",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "e9af238f-f1e3-51f0-b5e6-25bcec4b43c3",
+    "user_id": "3a9176ca-373b-587c-8fd5-6c9a7d20fd90",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Lenovo ThinkPad X1 Carbon"
+  },
+  {
+    "id": "789eac8d-f634-5318-b945-7e34c68b8e7f",
+    "user_id": "3a9176ca-373b-587c-8fd5-6c9a7d20fd90",
+    "type": "monitor",
+    "os": "windows",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "77df3070-4171-5e99-b54e-4f803f0598d1",
+    "user_id": "3a9176ca-373b-587c-8fd5-6c9a7d20fd90",
+    "type": "phone",
+    "os": "windows",
+    "model": "Samsung Galaxy S24"
+  },
+  {
+    "id": "330a3687-17c7-54f0-bebe-5f50f526cdc6",
+    "user_id": "23778057-ba7d-5c42-9c18-de57ca2dcb1a",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Air 13 (2023)"
+  },
+  {
+    "id": "e3924280-af66-5818-99cc-1ec9d0ea24aa",
+    "user_id": "f6d940e3-1bc6-5651-9322-c07ef43701e0",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "7b7fd914-87dc-5522-a1ce-2efcfebc49e2",
+    "user_id": "f6d940e3-1bc6-5651-9322-c07ef43701e0",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "2cc36b9d-c492-58cf-b768-7c74b7eb597b",
+    "user_id": "b8da90fb-f8f2-54a4-8659-1811a0477c9b",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "05ba06f6-4b1e-55a2-8bf4-dfdd23388b79",
+    "user_id": "b8da90fb-f8f2-54a4-8659-1811a0477c9b",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "bab95642-178e-5765-b1ce-0f54b705ec4c",
+    "user_id": "4dc2bd85-d428-5205-a9de-c621f0bea2db",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "ec837d3e-83da-5db8-8e3d-572f4629e318",
+    "user_id": "4dc2bd85-d428-5205-a9de-c621f0bea2db",
+    "type": "monitor",
+    "os": "windows",
+    "model": "HP E27"
+  },
+  {
+    "id": "d43038e8-dfa8-54d2-bac9-1c820f9bff24",
+    "user_id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "d441c0e1-844f-5c2b-bf59-2d21544c8aba",
+    "user_id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "1ed3bc4b-ce4f-5697-a090-2be6e32bab4b",
+    "user_id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
+    "type": "monitor",
+    "os": "macos",
+    "model": "Apple Studio Display"
+  },
+  {
+    "id": "a14cdca9-1782-50e7-bb1b-d20cab5054e2",
+    "user_id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 15"
+  },
+  {
+    "id": "2947b345-64a4-5974-b1f7-f1a6076f1905",
+    "user_id": "418aeb21-756a-595d-ad73-47b044860845",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Lenovo ThinkPad X1 Carbon"
+  },
+  {
+    "id": "7f1f21f5-4315-5a9b-8cf8-63758242186a",
+    "user_id": "418aeb21-756a-595d-ad73-47b044860845",
+    "type": "monitor",
+    "os": "windows",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "1ead5109-8897-5f09-835c-40d94eaacd93",
+    "user_id": "418aeb21-756a-595d-ad73-47b044860845",
+    "type": "phone",
+    "os": "windows",
+    "model": "Samsung Galaxy S24"
+  },
+  {
+    "id": "552b4daa-8207-5ad6-baaf-e07e22541af0",
+    "user_id": "418aeb21-756a-595d-ad73-47b044860845",
+    "type": "desktop",
+    "os": "windows",
+    "model": "HP Z2 Tower"
+  },
+  {
+    "id": "85c7bee0-7a91-5c27-8abe-b3f5ee3ba830",
+    "user_id": "63ad9678-728e-50f0-95e6-f8a3569a6b7e",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "b34af802-d664-5108-9df2-5b06ef253717",
+    "user_id": "63ad9678-728e-50f0-95e6-f8a3569a6b7e",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "fdb25655-41b7-519c-a250-0903a2854cd7",
+    "user_id": "8cfac42f-4ba3-5c77-976a-3de66930019c",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "81b6748b-c15c-517d-bb57-36e7a5a3c417",
+    "user_id": "8cfac42f-4ba3-5c77-976a-3de66930019c",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "a17bbada-0992-5652-bdf2-0f0a22281252",
+    "user_id": "8cfac42f-4ba3-5c77-976a-3de66930019c",
+    "type": "monitor",
+    "os": "windows",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "8f0db404-0b29-52bc-97e2-811948bcc51a",
+    "user_id": "8cfac42f-4ba3-5c77-976a-3de66930019c",
+    "type": "phone",
+    "os": "windows",
+    "model": "Google Pixel 8"
+  },
+  {
+    "id": "8ca7e607-2e03-598e-a97f-e6ee6d89d156",
+    "user_id": "0cedd4d0-4203-5d89-9bed-d77415d4f0d6",
+    "type": "laptop",
+    "os": "windows",
+    "model": "HP EliteBook 840"
+  },
+  {
+    "id": "98f1fea2-2112-536d-8f04-9e4f54e68192",
+    "user_id": "16521f27-3794-5e2e-bce4-61738145d5d4",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 14 (2023)"
+  },
+  {
+    "id": "7b0bbcdb-dea8-5275-abb3-377f079a8160",
+    "user_id": "3825c661-dcb3-5674-8479-81aa291ac214",
+    "type": "laptop",
+    "os": "linux",
+    "model": "Dell XPS 13 (Ubuntu)"
+  },
+  {
+    "id": "544bff2a-f685-5a23-84d2-c633dd12966b",
+    "user_id": "3825c661-dcb3-5674-8479-81aa291ac214",
+    "type": "monitor",
+    "os": "linux",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "7d4e7540-b564-555b-9f1a-b4e36331b46a",
+    "user_id": "04bec17d-5b64-5f5b-95f2-63dbd190a81c",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Lenovo ThinkPad X1 Carbon"
+  },
+  {
+    "id": "b022f9c1-a65f-5546-966e-8a87fa5d9b09",
+    "user_id": "16769818-9755-5c7f-83e1-fe30a094e799",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "305a65d2-dc1a-59a0-9a38-9ca35d8493bc",
+    "user_id": "16769818-9755-5c7f-83e1-fe30a094e799",
+    "type": "monitor",
+    "os": "macos",
+    "model": "LG UltraFine 27"
+  },
+  {
+    "id": "08d2c684-c095-5ee6-8b8d-1059ec7a695c",
+    "user_id": "16769818-9755-5c7f-83e1-fe30a094e799",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 14"
+  },
+  {
+    "id": "2a15ff82-ca90-571d-9e6d-03e3ade55d1f",
+    "user_id": "16769818-9755-5c7f-83e1-fe30a094e799",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "45b695a4-5365-50e8-b985-9d46b756bbdd",
+    "user_id": "ecf2e17d-fe3f-5228-8533-9f095023b78a",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "58771b06-3480-5ce3-8374-440426cd8c42",
+    "user_id": "932a230f-934e-562d-8bb6-107796bc2232",
+    "type": "laptop",
+    "os": "windows",
+    "model": "HP EliteBook 840"
+  },
+  {
+    "id": "1b6103aa-4561-59f1-be31-ba95d10a2242",
+    "user_id": "4c6d8343-65c4-5a0d-9fd1-259617698b0c",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "2fd59f82-5bab-5e80-a429-65bd3bfdb90d",
+    "user_id": "f9e9f9f7-caf8-5b9a-b66a-c04609f3b9f4",
+    "type": "laptop",
+    "os": "windows",
+    "model": "HP EliteBook 840"
+  },
+  {
+    "id": "53599d33-1355-5c36-86ab-39c84e9fdf8a",
+    "user_id": "f9e9f9f7-caf8-5b9a-b66a-c04609f3b9f4",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "fa438dc9-2b33-5b49-971a-e0615d384585",
+    "user_id": "dae9d14f-c081-5a4b-b46f-47c5077ab34f",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "232f42d7-1d17-5344-b246-428dd609f6e1",
+    "user_id": "7713662d-a09c-5c75-87d5-c4ee025017fc",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "816bf867-6e30-503e-97ac-4a8184267dd0",
+    "user_id": "7713662d-a09c-5c75-87d5-c4ee025017fc",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "0a97f6e0-c0f0-5e5d-9b55-b476f62fd366",
+    "user_id": "7713662d-a09c-5c75-87d5-c4ee025017fc",
+    "type": "phone",
+    "os": "windows",
+    "model": "Google Pixel 8"
+  },
+  {
+    "id": "d91341e4-a265-520b-bc3e-539a3912c179",
+    "user_id": "7713662d-a09c-5c75-87d5-c4ee025017fc",
+    "type": "monitor",
+    "os": "windows",
+    "model": "HP E27"
+  },
+  {
+    "id": "f324c802-9c98-53c6-8afd-d9879cc20521",
+    "user_id": "6e276e6b-485c-51a1-a261-4f3f7153b0bb",
+    "type": "laptop",
+    "os": "linux",
+    "model": "Dell XPS 13 (Ubuntu)"
+  },
+  {
+    "id": "0233e631-b864-5e39-820b-2503d793c699",
+    "user_id": "6e276e6b-485c-51a1-a261-4f3f7153b0bb",
+    "type": "desktop",
+    "os": "linux",
+    "model": "System76 Thelio"
+  },
+  {
+    "id": "6239af99-984f-53fa-a302-e24c42a03895",
+    "user_id": "6e276e6b-485c-51a1-a261-4f3f7153b0bb",
+    "type": "monitor",
+    "os": "linux",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "3f858ffb-1991-516d-8e18-888e4184526b",
+    "user_id": "97b02d9b-41fa-5ec2-94a5-4006c5f4c49e",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Lenovo ThinkPad X1 Carbon"
+  },
+  {
+    "id": "08985131-606a-5f2a-8a50-7164e182df3a",
+    "user_id": "97b02d9b-41fa-5ec2-94a5-4006c5f4c49e",
+    "type": "monitor",
+    "os": "windows",
+    "model": "HP E27"
+  },
+  {
+    "id": "351c41d3-8b16-59bf-8189-9595a2c5f555",
+    "user_id": "97b02d9b-41fa-5ec2-94a5-4006c5f4c49e",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "48b20d6c-8247-5e91-ab67-efb53c82f730",
+    "user_id": "97b02d9b-41fa-5ec2-94a5-4006c5f4c49e",
+    "type": "phone",
+    "os": "windows",
+    "model": "Samsung Galaxy S24"
+  },
+  {
+    "id": "f534b439-cb9e-52eb-b172-38f4acc00760",
+    "user_id": "3673992c-84da-571e-b257-9a658401db18",
+    "type": "laptop",
+    "os": "windows",
+    "model": "HP EliteBook 840"
+  },
+  {
+    "id": "21cc0494-6012-5d93-b01d-01eaeedbb451",
+    "user_id": "3673992c-84da-571e-b257-9a658401db18",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "2dd2e758-4bfe-5761-a702-f05d614ad3dc",
+    "user_id": "3673992c-84da-571e-b257-9a658401db18",
+    "type": "monitor",
+    "os": "windows",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "20cfbedb-9f0e-51c2-a349-b881dfe7e3cb",
+    "user_id": "ce2daf17-946d-50af-ae4a-cf47bd1515bd",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "272c74d4-f962-53df-b031-3301ab1e199d",
+    "user_id": "ce2daf17-946d-50af-ae4a-cf47bd1515bd",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 14"
+  },
+  {
+    "id": "09c3e630-3bd8-5307-b40f-472c2e56ffc8",
+    "user_id": "ce2daf17-946d-50af-ae4a-cf47bd1515bd",
+    "type": "monitor",
+    "os": "macos",
+    "model": "Apple Studio Display"
+  },
+  {
+    "id": "f5edafda-c316-5f19-b120-5eb0e474e0a4",
+    "user_id": "ce2daf17-946d-50af-ae4a-cf47bd1515bd",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "8ffea820-7139-5540-904d-1bff9fbce98d",
+    "user_id": "ecc2818c-f9bf-562e-8489-3293f70680ab",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "0816d6cd-d73a-51c3-8784-d4cfb45c3444",
+    "user_id": "ecc2818c-f9bf-562e-8489-3293f70680ab",
+    "type": "monitor",
+    "os": "macos",
+    "model": "LG UltraFine 27"
+  },
+  {
+    "id": "011f81b8-b6db-5f7b-9cef-40aa4c7a0037",
+    "user_id": "bfa154fd-5405-5599-9a4a-775fdb842544",
+    "type": "laptop",
+    "os": "windows",
+    "model": "HP EliteBook 840"
+  },
+  {
+    "id": "f6b50270-ad23-5bb5-8210-29ec67c83a42",
+    "user_id": "bfa154fd-5405-5599-9a4a-775fdb842544",
+    "type": "desktop",
+    "os": "windows",
+    "model": "HP Z2 Tower"
+  },
+  {
+    "id": "8b649ca0-b1b2-50c2-8a7d-2994a3ec1c54",
+    "user_id": "bfa154fd-5405-5599-9a4a-775fdb842544",
+    "type": "monitor",
+    "os": "windows",
+    "model": "HP E27"
+  },
+  {
+    "id": "a33a5e46-0856-5dbf-9e77-617a074f863d",
+    "user_id": "76d58f1e-7b4d-5e0f-a9c6-0be12770e594",
+    "type": "laptop",
+    "os": "linux",
+    "model": "Dell XPS 13 (Ubuntu)"
+  },
+  {
+    "id": "f8f6443e-bdd2-54d3-b4e1-360883a5420c",
+    "user_id": "030b8df9-adb4-5065-810e-af3769552431",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Lenovo ThinkPad X1 Carbon"
+  },
+  {
+    "id": "7402772d-643a-547e-9c0e-38422a84b3ee",
+    "user_id": "b3f1092a-edee-5758-8e4e-96caa17cd6d1",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "cc9a040b-67c6-5eed-aa5f-c6e11c605a41",
+    "user_id": "b3f1092a-edee-5758-8e4e-96caa17cd6d1",
+    "type": "desktop",
+    "os": "macos",
+    "model": "iMac 24 (2023)"
+  },
+  {
+    "id": "57c478f7-df17-5ced-bd9a-4e8ab3c16b10",
+    "user_id": "b3f1092a-edee-5758-8e4e-96caa17cd6d1",
+    "type": "monitor",
+    "os": "macos",
+    "model": "Apple Studio Display"
+  },
+  {
+    "id": "59afce01-172d-5175-a256-0385b48f8231",
+    "user_id": "838a370c-3fd3-5d08-a3e1-4811033bd306",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 14 (2023)"
+  },
+  {
+    "id": "44c78e46-6e2a-556b-83fe-539bd135d3b5",
+    "user_id": "838a370c-3fd3-5d08-a3e1-4811033bd306",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 15"
+  },
+  {
+    "id": "2a4f9ca9-b140-5415-bc45-442f3738eade",
+    "user_id": "8857304c-19ed-59be-99e2-a3a26ac46db9",
+    "type": "laptop",
+    "os": "windows",
+    "model": "HP EliteBook 840"
+  },
+  {
+    "id": "b18281b3-649f-5735-9d3f-a64626931353",
+    "user_id": "8857304c-19ed-59be-99e2-a3a26ac46db9",
+    "type": "monitor",
+    "os": "windows",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "d054b438-60b4-5f95-b012-e01184505c65",
+    "user_id": "b4a76aea-b9eb-5f96-a6e6-8f6f9ffb614d",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Air 13 (2023)"
+  },
+  {
+    "id": "60b91794-8e3e-528a-a196-425bf7ddb675",
+    "user_id": "ae590801-542d-5f01-bdbd-d778cf26be8e",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "4fc0fe1e-abce-5ec0-a58e-c102be2d7fdf",
+    "user_id": "ae590801-542d-5f01-bdbd-d778cf26be8e",
+    "type": "phone",
+    "os": "windows",
+    "model": "Samsung Galaxy S24"
+  },
+  {
+    "id": "b22f6ba9-2713-5fba-860c-fc57fa32a6f5",
+    "user_id": "11a70478-9881-51db-a2df-d153fcfedb80",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 14 (2023)"
+  },
+  {
+    "id": "2adbf90f-9e85-5dd7-a661-b8e62cb43136",
+    "user_id": "11a70478-9881-51db-a2df-d153fcfedb80",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 15"
+  },
+  {
+    "id": "05ee9642-67c9-502f-8943-56f49ddc4719",
+    "user_id": "11a70478-9881-51db-a2df-d153fcfedb80",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "9be7abec-7675-5c25-b3a3-2b78d9bf1a30",
+    "user_id": "11a70478-9881-51db-a2df-d153fcfedb80",
+    "type": "monitor",
+    "os": "macos",
+    "model": "LG UltraFine 27"
+  },
+  {
+    "id": "3e443c9a-5b5e-5b4b-a202-6b512985f336",
+    "user_id": "765d1b3e-734a-5a42-b580-af63b7753829",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 14 (2023)"
+  },
+  {
+    "id": "1cbecc75-15ae-5c5e-86a3-1ff03a95da1a",
+    "user_id": "765d1b3e-734a-5a42-b580-af63b7753829",
+    "type": "monitor",
+    "os": "macos",
+    "model": "LG UltraFine 27"
+  },
+  {
+    "id": "476015f5-fb64-5e3c-bede-598ce9119a8a",
+    "user_id": "765d1b3e-734a-5a42-b580-af63b7753829",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "90252f6e-2a66-55cd-86ed-ca97b0cc3aff",
+    "user_id": "ee59f7f8-c4a2-5567-ac10-efbad71be7d1",
+    "type": "laptop",
+    "os": "windows",
+    "model": "Dell Latitude 5450"
+  },
+  {
+    "id": "169c078e-b121-5f30-9398-de8c7a352979",
+    "user_id": "ee59f7f8-c4a2-5567-ac10-efbad71be7d1",
+    "type": "desktop",
+    "os": "windows",
+    "model": "Dell OptiPlex 7010"
+  },
+  {
+    "id": "4660333c-f62c-5b8c-8cb3-f8b4e384a907",
+    "user_id": "ee59f7f8-c4a2-5567-ac10-efbad71be7d1",
+    "type": "monitor",
+    "os": "windows",
+    "model": "HP E27"
+  },
+  {
+    "id": "1fadb7b4-245d-5832-ab99-bf7fddac9942",
+    "user_id": "ee59f7f8-c4a2-5567-ac10-efbad71be7d1",
+    "type": "phone",
+    "os": "windows",
+    "model": "Google Pixel 8"
+  },
+  {
+    "id": "5372dd6a-b51e-5758-a442-f9148d134978",
+    "user_id": "eead9c9e-e2c0-5b5b-aafa-2a317e223b09",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 16 (2024)"
+  },
+  {
+    "id": "a978d9b2-e394-5fad-a148-307b23f9a75a",
+    "user_id": "eead9c9e-e2c0-5b5b-aafa-2a317e223b09",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "5e4282ff-80ed-5d20-864c-c5c5b90e36e7",
+    "user_id": "9c1a13a3-3534-56a3-9624-de62610faf8f",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Air 13 (2023)"
+  },
+  {
+    "id": "34effe9a-387f-58f1-8abc-69eb29a0f1a1",
+    "user_id": "8b06e2ed-49f2-5144-b523-34f8e203fbfb",
+    "type": "laptop",
+    "os": "linux",
+    "model": "System76 Lemur Pro"
+  },
+  {
+    "id": "ff27c01c-290e-55bc-b499-6c3183ff7717",
+    "user_id": "8b06e2ed-49f2-5144-b523-34f8e203fbfb",
+    "type": "phone",
+    "os": "linux",
+    "model": "Google Pixel 8"
+  },
+  {
+    "id": "272639fd-26b1-570d-a670-01bf6e8fc05f",
+    "user_id": "8b06e2ed-49f2-5144-b523-34f8e203fbfb",
+    "type": "monitor",
+    "os": "linux",
+    "model": "Dell UltraSharp U2723"
+  },
+  {
+    "id": "6f07f85b-5cb6-553d-b564-6641fa0e65d6",
+    "user_id": "ef9b5c86-362b-54d7-b8e1-476d23348639",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Air 13 (2023)"
+  },
+  {
+    "id": "e090fd33-d691-5a0b-9827-510a23029599",
+    "user_id": "ef9b5c86-362b-54d7-b8e1-476d23348639",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 14"
+  },
+  {
+    "id": "07961be7-7558-573f-aa10-38abe377e7e7",
+    "user_id": "524f3e8d-2f13-5f70-87a2-2e305e274fd7",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 14 (2023)"
+  },
+  {
+    "id": "c012235f-c727-5540-9490-b55e27c7d58d",
+    "user_id": "524f3e8d-2f13-5f70-87a2-2e305e274fd7",
+    "type": "monitor",
+    "os": "macos",
+    "model": "Apple Studio Display"
+  },
+  {
+    "id": "44719416-fda4-509a-8019-eec6b2a55c43",
+    "user_id": "524f3e8d-2f13-5f70-87a2-2e305e274fd7",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 14"
+  },
+  {
+    "id": "458613ca-0cbd-52f3-92cd-09a9cadc74c7",
+    "user_id": "524f3e8d-2f13-5f70-87a2-2e305e274fd7",
+    "type": "desktop",
+    "os": "macos",
+    "model": "Mac Studio (2023)"
+  },
+  {
+    "id": "9bd3fbe1-2cc6-5112-aee0-bab029bf2caa",
+    "user_id": "877272bf-a3f9-5b51-9de0-56e7a5d46a60",
+    "type": "laptop",
+    "os": "macos",
+    "model": "MacBook Pro 14 (2023)"
+  },
+  {
+    "id": "b84099e3-5881-564f-9fe8-4ab78bc71d5b",
+    "user_id": "877272bf-a3f9-5b51-9de0-56e7a5d46a60",
+    "type": "desktop",
+    "os": "macos",
+    "model": "iMac 24 (2023)"
+  },
+  {
+    "id": "18f15d99-4aad-53be-90e7-34c194648229",
+    "user_id": "877272bf-a3f9-5b51-9de0-56e7a5d46a60",
+    "type": "phone",
+    "os": "macos",
+    "model": "iPhone 15"
+  },
+  {
+    "id": "5c5fa2fa-9130-5a3d-af0a-c46054871af4",
+    "user_id": "877272bf-a3f9-5b51-9de0-56e7a5d46a60",
+    "type": "monitor",
+    "os": "macos",
+    "model": "LG UltraFine 27"
+  },
+  {
+    "id": "1795027a-59ca-51d0-8402-75fc6ba9b3b3",
+    "user_id": "65b1d55e-fd05-5b87-8b0a-30d7e276887f",
+    "type": "laptop",
+    "os": "windows",
+    "model": "HP EliteBook 840"
+  }
+]

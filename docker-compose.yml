@@ -1,0 +1,71 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      # Override .env's localhost URLs with the compose service names.
+      DATABASE_URL: postgresql+psycopg://itsm:itsm@postgres:5432/itsm
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ui:
+    build: .
+    command: streamlit run ui/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    environment:
+      API_URL: http://app:8000
+    depends_on:
+      - app
+    # First boot of a fresh volume: seed + ingest once via
+    #   docker compose exec app python scripts/seed_db.py
+    #   docker compose exec app python -m app.rag.ingest
+
+  # M2 HITL: the manager approval view (approve/reject orders > $500). Separate surface from
+  # the chat UI on purpose — the approver is not the requester (ADR-005). Same image, same
+  # API_URL; only the start command + port differ.
+  approvals:
+    build: .
+    command: streamlit run ui/approval_view.py --server.port 8502 --server.address 0.0.0.0
+    ports:
+      - "8502:8502"
+    environment:
+      API_URL: http://app:8000
+    depends_on:
+      - app
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: itsm
+      POSTGRES_PASSWORD: itsm
+      POSTGRES_DB: itsm
+    ports:
+      - "5432:5432"
+    volumes:
+      # Named volume: `make db-up` persists data across restarts; only `make reset` (down -v) wipes it.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U itsm -d itsm"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "9edd18c3-fd31-55ad-bba5-1840d139058a",
+    "user_id": "985917b7-ae40-577f-9d96-80db07adb580",
+    "fact_type": "device_os",
+    "fact": "Owns a MacBook Pro 16 (macOS).",
+    "source": "seed",
+    "confidence": 0.95
+  },
+  {
+    "id": "7d2bccfc-f8fe-5b47-83a5-480eb2cf6226",
+    "user_id": "985917b7-ae40-577f-9d96-80db07adb580",
+    "fact_type": "org",
+    "fact": "Works in the Sales organization.",
+    "source": "seed",
+    "confidence": 0.9
+  },
+  {
+    "id": "8c006ce0-18a8-5baa-bcf1-94a43603e912",
+    "user_id": "985917b7-ae40-577f-9d96-80db07adb580",
+    "fact_type": "contact_preference",
+    "fact": "Prefers email over Slack.",
+    "source": "seed",
+    "confidence": 0.6
+  }
+]

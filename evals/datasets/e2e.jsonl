@@ -1,0 +1,1 @@
+{"query": "example: my screen keeps flickering", "expected_side_effects": {"ticket_created": true, "category": "TODO-M4"}}

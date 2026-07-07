@@ -1,0 +1,13 @@
+# TODO(M4): deploy on merge to main
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # TODO(M4): build image, push, deploy

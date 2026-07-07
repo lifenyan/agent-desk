@@ -1,0 +1,35 @@
+{
+  "_comment": "Topics DELIBERATELY absent from the knowledge base, so refusal eval cases have something to point at. The knowledge agent must say no article covers these and offer a ticket (ADR-011) rather than improvise. Data generation must NOT create an article matching any of these.",
+  "missing_topics": [
+    {
+      "slug": "bluetooth-keyboard-pairing",
+      "topic": "Bluetooth keyboard pairing failures",
+      "example_queries": ["how do I pair my Bluetooth keyboard", "my wireless keyboard won't connect over bluetooth"],
+      "note": "Hardware KB covers WIRED keyboard/mouse and docks only; Bluetooth pairing is intentionally uncovered."
+    },
+    {
+      "slug": "printer-driver-e505",
+      "topic": "Printer driver error E-505",
+      "example_queries": ["printer driver error E-505", "how to fix error E-505 on the printer"],
+      "note": "Printer KB covers adding a network printer and generic 'not printing' steps, never the specific E-505 driver code."
+    },
+    {
+      "slug": "smartwatch-email-setup",
+      "topic": "Setting up work email on a smartwatch",
+      "example_queries": ["set up my work email on my smartwatch", "outlook on apple watch"],
+      "note": "Email KB covers desktop and phone only."
+    },
+    {
+      "slug": "whiteboard-app-install",
+      "topic": "Installing a collaborative whiteboard app",
+      "example_queries": ["install the company whiteboard app", "how do I get Miro"],
+      "note": "Not in the software catalog or KB; a plausible-but-absent SaaS request."
+    },
+    {
+      "slug": "parking-badge-access",
+      "topic": "Parking / building badge access",
+      "example_queries": ["how do I get a parking badge", "request access to the parking garage"],
+      "note": "Out of IT scope entirely — tests that the agent refuses non-IT questions too."
+    }
+  ]
+}

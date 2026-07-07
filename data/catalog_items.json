@@ -1,0 +1,869 @@
+[
+  {
+    "id": "3988c654-cd74-5c1d-820b-ca029604e518",
+    "name": "Adobe Photoshop license",
+    "price": "650.00",
+    "os_compat": [
+      "macos",
+      "windows"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "d40e0578-b48e-5dcf-955d-c23a66ad419f",
+    "name": "JetBrains IDE license",
+    "price": "199.00",
+    "os_compat": [
+      "macos",
+      "windows",
+      "linux"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows",
+          "linux"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "a404322d-0568-5a38-9e88-2dc334a161e9",
+    "name": "Microsoft 365 license",
+    "price": "150.00",
+    "os_compat": [
+      "macos",
+      "windows"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "dd5e3859-d8d7-5664-a4b5-911e73ae420a",
+    "name": "Slack Pro seat",
+    "price": "96.00",
+    "os_compat": [
+      "macos",
+      "windows",
+      "linux"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows",
+          "linux"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "c9b17bce-627b-5d0e-880a-24ca5a7e3c9c",
+    "name": "Zoom Pro license",
+    "price": "150.00",
+    "os_compat": [
+      "macos",
+      "windows",
+      "linux"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows",
+          "linux"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "40109ea4-11b6-5d6e-8a60-c8a6661bbc3c",
+    "name": "Adobe Acrobat Pro",
+    "price": "180.00",
+    "os_compat": [
+      "macos",
+      "windows"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "e049347e-7992-52cd-8f07-aba4a30d8cfb",
+    "name": "Tableau Creator license",
+    "price": "840.00",
+    "os_compat": [
+      "macos",
+      "windows"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "6d50ec61-e35d-52ac-98ce-b4a029eb4fc4",
+    "name": "Figma Organization seat",
+    "price": "540.00",
+    "os_compat": [
+      "macos",
+      "windows",
+      "linux"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows",
+          "linux"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "ea7c490e-5e06-5c55-b8d8-1e013361c005",
+    "name": "1Password Business seat",
+    "price": "96.00",
+    "os_compat": [
+      "macos",
+      "windows",
+      "linux"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows",
+          "linux"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "0aecacc8-4ba8-559e-af99-6961b7c91f55",
+    "name": "GitHub Copilot seat",
+    "price": "228.00",
+    "os_compat": [
+      "macos",
+      "windows",
+      "linux"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows",
+          "linux"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "46e62b27-79ea-5bd7-a7d4-f0ac57319ff7",
+    "name": "Docker Business seat",
+    "price": "252.00",
+    "os_compat": [
+      "macos",
+      "windows",
+      "linux"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "os_variant",
+        "label": "OS variant",
+        "type": "select",
+        "options": [
+          "macos",
+          "windows",
+          "linux"
+        ],
+        "required": true,
+        "autofill": "asset.os"
+      }
+    ]
+  },
+  {
+    "id": "13768e42-6c6d-59c9-b691-64ebb87608ac",
+    "name": "AutoCAD license",
+    "price": "1690.00",
+    "os_compat": [
+      "windows"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "aacb5093-fe08-5835-a032-e389d184f986",
+    "name": "Standing desk",
+    "price": "720.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "827ff786-0879-5ba5-8f77-3eeb05238349",
+    "name": "Ergonomic office chair",
+    "price": "480.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "4db18212-d95b-5941-90d2-fca5992a9e7a",
+    "name": "27-inch 4K monitor",
+    "price": "430.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "18000467-1843-55c1-b962-dc155bca6a53",
+    "name": "USB-C docking station",
+    "price": "210.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "9a7cfe39-eebd-5801-9911-be0d3ca606ab",
+    "name": "Noise-cancelling headset",
+    "price": "320.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "5382e9e8-bcf0-59e8-bf35-084813e33bc9",
+    "name": "Wireless mouse + keyboard combo",
+    "price": "85.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "f86d2177-1ca5-518b-aca0-15c134ce98c5",
+    "name": "Laptop stand",
+    "price": "60.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "15bc9bf6-8871-5f29-826a-2bd6e78ecd66",
+    "name": "1080p webcam",
+    "price": "95.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "59b6345f-bff9-5fc4-b4ba-1478cec7bc20",
+    "name": "MacBook Pro 16 refresh",
+    "price": "3200.00",
+    "os_compat": [
+      "macos"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "d15d52bb-53b4-5905-b164-d63c69c90b8b",
+    "name": "Dell Latitude 5450 refresh",
+    "price": "1450.00",
+    "os_compat": [
+      "windows"
+    ],
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "6f8531d4-40de-54d9-88eb-4d98e6712774",
+    "name": "Corporate iPhone 15",
+    "price": "999.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "b5feeaec-b10b-5e0f-a088-9e6c1ff78165",
+    "name": "External SSD 2TB",
+    "price": "240.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "1c0edf50-157d-5092-8c43-39b85bb54f42",
+    "name": "Training course reimbursement",
+    "price": "500.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "0a45ed74-2dbf-586d-823d-ab83887c511b",
+    "name": "Conference travel request",
+    "price": "1500.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      },
+      {
+        "name": "business_justification",
+        "label": "Business justification",
+        "type": "text",
+        "required": true,
+        "autofill": null
+      }
+    ]
+  },
+  {
+    "id": "9ff6f9f4-8c6f-56a8-b558-238ab877f078",
+    "name": "Cloud sandbox (AWS) monthly",
+    "price": "300.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "49127582-b929-53a6-b452-70c229f5903d",
+    "name": "Certification exam voucher",
+    "price": "250.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "38bfcad4-e5e6-5987-9a4b-f6de688c93f0",
+    "name": "Home internet stipend (monthly)",
+    "price": "60.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  },
+  {
+    "id": "57b6650d-ef98-51a3-a355-8da2b482dbb5",
+    "name": "Guest Wi-Fi access (temporary)",
+    "price": "0.00",
+    "os_compat": null,
+    "form_schema": [
+      {
+        "name": "cost_center",
+        "label": "Cost center",
+        "type": "select",
+        "options": [
+          "sales",
+          "engineering",
+          "finance",
+          "hr"
+        ],
+        "required": true,
+        "autofill": "user.org"
+      }
+    ]
+  }
+]

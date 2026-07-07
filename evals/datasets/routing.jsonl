@@ -1,0 +1,30 @@
+{"query": "How do I reset my password?", "expected_specialist": "knowledge"}
+{"query": "What's the policy on installing personal software on my work laptop?", "expected_specialist": "knowledge"}
+{"query": "What's new in v5.2?", "expected_specialist": "knowledge"}
+{"query": "How do I set up my company email on my phone?", "expected_specialist": "knowledge"}
+{"query": "How do I connect to the office VPN from home?", "expected_specialist": "knowledge"}
+{"query": "Compare the v5.1 and v5.2 release notes for me.", "expected_specialist": "knowledge"}
+{"query": "Is there a guide for setting up two-factor authentication?", "expected_specialist": "knowledge"}
+{"query": "What's the process for getting IT equipment for a new hire?", "expected_specialist": "knowledge"}
+{"query": "I need a new laptop.", "expected_specialist": "fulfillment"}
+{"query": "Order me an Adobe Photoshop license.", "expected_specialist": "fulfillment"}
+{"query": "Can I get a second monitor for my desk?", "expected_specialist": "fulfillment"}
+{"query": "I'd like to request a JetBrains IDE license.", "expected_specialist": "fulfillment"}
+{"query": "Please order a corporate iPhone for me.", "expected_specialist": "fulfillment"}
+{"query": "I want to buy a Tableau license for data analysis.", "expected_specialist": "fulfillment"}
+{"query": "I'm requesting a USB-C docking station for my workspace.", "expected_specialist": "fulfillment"}
+{"query": "Get me a copy of AutoCAD.", "expected_specialist": "fulfillment"}
+{"query": "My VPN keeps disconnecting every few minutes — can IT look into it?", "expected_specialist": "incident"}
+{"query": "I'm locked out of my account and the self-service reset didn't work. Please unlock it.", "expected_specialist": "incident"}
+{"query": "The shared printer is broken, nothing prints — can someone come fix it?", "expected_specialist": "incident"}
+{"query": "My laptop battery dies within an hour, I think it needs to be serviced.", "expected_specialist": "incident"}
+{"query": "Calendar sync is broken on my phone even after I re-added the account twice — please have IT look at it.", "expected_specialist": "incident"}
+{"query": "The software update on my machine has been stuck at 40% for hours.", "expected_specialist": "incident"}
+{"query": "My docking station isn't detected anymore since yesterday.", "expected_specialist": "incident"}
+{"query": "Please close my ticket about the monitor issue — it resolved itself.", "expected_specialist": "incident"}
+{"query": "Reset my password AND show me the v5.1 release notes.", "expected_specialist": "knowledge", "hard": true, "expects_tools": ["search_knowledge_articles", "get_release_notes"]}
+{"query": "My laptop is ancient and slow honestly, I think it's time for a replacement.", "expected_specialist": "fulfillment", "hard": true}
+{"query": "Photoshop crashes when I open large files — do we have a guide for that, or should I file a ticket?", "expected_specialist": "knowledge", "hard": true}
+{"query": "I spilled coffee on my keyboard and now half the keys don't work.", "expected_specialist": "incident", "hard": true}
+{"query": "New analyst starts Monday and she'll need a MacBook — can you sort that out?", "expected_specialist": "fulfillment", "hard": true}
+{"query": "wifi's been trash all morning, nothing loads, plz fix", "expected_specialist": "incident", "hard": true}

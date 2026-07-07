@@ -1,0 +1,276 @@
+{
+  "_comment": "Positive-space memo (mirror of negative_space.json): queries that SHOULD retrieve a specific article, with the expected match. Human reference so the demo/eval intent isn't forgotten. Derived from taxonomy.json's retrieval_eval_plan; machine-checkable version = evals/datasets/retrieval.jsonl.",
+  "matched_cases": [
+    {
+      "query": "how do I reset my password",
+      "expected_articles": [
+        {
+          "slug": "reset-password",
+          "title": "How to reset your login password",
+          "category": "accounts"
+        }
+      ],
+      "note": "canonical RAG demo"
+    },
+    {
+      "query": "I can't log in with SSO, need a password reset",
+      "expected_articles": [
+        {
+          "slug": "sso-password-reset",
+          "title": "Password reset for SSO users",
+          "category": "accounts"
+        },
+        {
+          "slug": "reset-password",
+          "title": "How to reset your login password",
+          "category": "accounts"
+        }
+      ],
+      "note": "near-duplicate of reset-password (disambiguation)"
+    },
+    {
+      "query": "my account is locked out",
+      "expected_articles": [
+        {
+          "slug": "unlock-account",
+          "title": "Unlocking a locked account",
+          "category": "accounts"
+        }
+      ],
+      "note": "near-duplicate of reset-password (disambiguation)"
+    },
+    {
+      "query": "how do I set up MFA",
+      "expected_articles": [
+        {
+          "slug": "mfa-setup",
+          "title": "Setting up multi-factor authentication (MFA)",
+          "category": "accounts"
+        }
+      ]
+    },
+    {
+      "query": "I lost my phone with the authenticator app",
+      "expected_articles": [
+        {
+          "slug": "mfa-lost-device",
+          "title": "Recovering MFA when you lose your phone",
+          "category": "accounts"
+        }
+      ]
+    },
+    {
+      "query": "compare AstraCore v5.1 and v5.2",
+      "expected_articles": [
+        {
+          "slug": "astracore-v5.1",
+          "title": "AstraCore v5.1 release notes",
+          "category": "software"
+        },
+        {
+          "slug": "astracore-v5.2",
+          "title": "AstraCore v5.2 release notes",
+          "category": "software"
+        }
+      ],
+      "note": "compare v5.1 vs v5.2 metadata-filter case"
+    },
+    {
+      "query": "what's new in AstraCore v5.0",
+      "expected_articles": [
+        {
+          "slug": "astracore-v5.0",
+          "title": "AstraCore v5.0 release notes",
+          "category": "software"
+        }
+      ]
+    },
+    {
+      "query": "set up the VPN on my Mac",
+      "expected_articles": [
+        {
+          "slug": "vpn-setup-macos",
+          "title": "VPN setup guide (macOS)",
+          "category": "network"
+        }
+      ],
+      "note": "macOS VPN guide"
+    },
+    {
+      "query": "set up VPN on Windows",
+      "expected_articles": [
+        {
+          "slug": "vpn-setup-windows",
+          "title": "VPN setup guide (Windows)",
+          "category": "network"
+        }
+      ],
+      "note": "Windows VPN guide"
+    },
+    {
+      "query": "my VPN keeps dropping",
+      "expected_articles": [
+        {
+          "slug": "vpn-troubleshoot",
+          "title": "VPN keeps disconnecting: troubleshooting",
+          "category": "network"
+        }
+      ],
+      "note": "backs the 'VPN drops' ticket cluster"
+    },
+    {
+      "query": "software reimbursement policy",
+      "expected_articles": [
+        {
+          "slug": "software-reimbursement",
+          "title": "Software reimbursement policy",
+          "category": "other"
+        }
+      ],
+      "note": "policy anchor"
+    },
+    {
+      "query": "when am I eligible for a new laptop",
+      "expected_articles": [
+        {
+          "slug": "hardware-refresh",
+          "title": "Hardware refresh policy",
+          "category": "other"
+        }
+      ],
+      "note": "must prefer current over outdated hardware-refresh-2022"
+    },
+    {
+      "query": "my laptop is really slow",
+      "expected_articles": [
+        {
+          "slug": "laptop-slow",
+          "title": "Speeding up a slow laptop",
+          "category": "hardware"
+        }
+      ],
+      "note": "backs the 'slow laptop' ticket cluster"
+    },
+    {
+      "query": "my screen keeps flickering",
+      "expected_articles": [
+        {
+          "slug": "screen-flicker",
+          "title": "Fixing a flickering laptop screen",
+          "category": "hardware"
+        }
+      ]
+    },
+    {
+      "query": "how do I install Photoshop",
+      "expected_articles": [
+        {
+          "slug": "photoshop-install",
+          "title": "Installing Adobe Photoshop after approval",
+          "category": "software"
+        }
+      ]
+    },
+    {
+      "query": "install a JetBrains IDE",
+      "expected_articles": [
+        {
+          "slug": "jetbrains-install",
+          "title": "Installing and activating a JetBrains IDE",
+          "category": "software"
+        }
+      ]
+    },
+    {
+      "query": "set up Git and SSH keys",
+      "expected_articles": [
+        {
+          "slug": "git-setup",
+          "title": "Setting up Git and SSH keys",
+          "category": "software"
+        }
+      ]
+    },
+    {
+      "query": "how do I report a phishing email",
+      "expected_articles": [
+        {
+          "slug": "phishing-report",
+          "title": "Reporting a phishing email",
+          "category": "email"
+        }
+      ]
+    },
+    {
+      "query": "set an out of office reply",
+      "expected_articles": [
+        {
+          "slug": "out-of-office",
+          "title": "Setting an out-of-office auto-reply",
+          "category": "email"
+        }
+      ]
+    },
+    {
+      "query": "connect an external monitor",
+      "expected_articles": [
+        {
+          "slug": "monitor-connect",
+          "title": "Connecting an external monitor",
+          "category": "hardware"
+        }
+      ]
+    },
+    {
+      "query": "add a network printer",
+      "expected_articles": [
+        {
+          "slug": "printer-add",
+          "title": "Adding a network printer",
+          "category": "hardware"
+        }
+      ],
+      "note": "must prefer current over outdated printer-add-legacy"
+    },
+    {
+      "query": "share a folder in AstraCore",
+      "expected_articles": [
+        {
+          "slug": "astracore-share",
+          "title": "Sharing files and folders in AstraCore",
+          "category": "software"
+        }
+      ]
+    },
+    {
+      "query": "first day IT setup checklist",
+      "expected_articles": [
+        {
+          "slug": "onboarding-day1",
+          "title": "Your first day: IT setup checklist",
+          "category": "other"
+        }
+      ]
+    },
+    {
+      "query": "are we allowed to use AI tools like ChatGPT",
+      "expected_articles": [
+        {
+          "slug": "ai-tools-policy",
+          "title": "Acceptable use of AI tools policy",
+          "category": "other"
+        }
+      ]
+    },
+    {
+      "query": "how do I install Docker",
+      "expected_articles": [
+        {
+          "slug": "docker-desktop",
+          "title": "Installing Docker Desktop",
+          "category": "software"
+        }
+      ]
+    }
+  ]
+}

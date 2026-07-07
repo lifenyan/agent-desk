@@ -1,0 +1,352 @@
+[
+  {
+    "id": "985917b7-ae40-577f-9d96-80db07adb580",
+    "name": "Demo User",
+    "email": "demo.user@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "b383b1aa-6ec2-52f8-952f-7b4532e0b899",
+    "name": "Morgan Reyes",
+    "email": "morgan.reyes@corp.com",
+    "org": "sales",
+    "role": "manager"
+  },
+  {
+    "id": "6b27c012-5f15-5ead-a0c7-5c45a58a980e",
+    "name": "IT Service Account",
+    "email": "it.bot@corp.com",
+    "org": "engineering",
+    "role": "it_agent"
+  },
+  {
+    "id": "4b8c90d1-2971-5da1-8839-42a394395f2d",
+    "name": "Dana Novak",
+    "email": "dana.novak@corp.com",
+    "org": "engineering",
+    "role": "manager"
+  },
+  {
+    "id": "63fe9d50-6114-5a1a-b9d4-a6093a95871b",
+    "name": "Priya Patel",
+    "email": "priya.patel@corp.com",
+    "org": "finance",
+    "role": "manager"
+  },
+  {
+    "id": "108d0f3e-3b2d-5edb-8665-e8c4abcfa67c",
+    "name": "Leo Meyer",
+    "email": "leo.meyer@corp.com",
+    "org": "hr",
+    "role": "manager"
+  },
+  {
+    "id": "17f569b1-03dc-584e-8ecd-01dd55a0ac3b",
+    "name": "Sam Brown",
+    "email": "sam.brown@corp.com",
+    "org": "engineering",
+    "role": "it_agent"
+  },
+  {
+    "id": "3a9176ca-373b-587c-8fd5-6c9a7d20fd90",
+    "name": "Hana Kim",
+    "email": "hana.kim4@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "23778057-ba7d-5c42-9c18-de57ca2dcb1a",
+    "name": "Avery Rossi",
+    "email": "avery.rossi18@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "f6d940e3-1bc6-5651-9322-c07ef43701e0",
+    "name": "Leo Khan",
+    "email": "leo.khan12@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "b8da90fb-f8f2-54a4-8659-1811a0477c9b",
+    "name": "Jordan Reyes",
+    "email": "jordan.reyes12@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  },
+  {
+    "id": "4dc2bd85-d428-5205-a9de-c621f0bea2db",
+    "name": "Avery Costa",
+    "email": "avery.costa78@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
+    "name": "Liam Okafor",
+    "email": "liam.okafor92@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "418aeb21-756a-595d-ad73-47b044860845",
+    "name": "Avery Suzuki",
+    "email": "avery.suzuki76@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "63ad9678-728e-50f0-95e6-f8a3569a6b7e",
+    "name": "Kofi Reyes",
+    "email": "kofi.reyes98@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  },
+  {
+    "id": "8cfac42f-4ba3-5c77-976a-3de66930019c",
+    "name": "Nina Ivanov",
+    "email": "nina.ivanov44@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "0cedd4d0-4203-5d89-9bed-d77415d4f0d6",
+    "name": "Riley Okafor",
+    "email": "riley.okafor98@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "16521f27-3794-5e2e-bce4-61738145d5d4",
+    "name": "Casey Patel",
+    "email": "casey.patel49@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "3825c661-dcb3-5674-8479-81aa291ac214",
+    "name": "Priya Ali",
+    "email": "priya.ali78@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "04bec17d-5b64-5f5b-95f2-63dbd190a81c",
+    "name": "Kofi Chen",
+    "email": "kofi.chen94@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "16769818-9755-5c7f-83e1-fe30a094e799",
+    "name": "Liam Kim",
+    "email": "liam.kim49@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "ecf2e17d-fe3f-5228-8533-9f095023b78a",
+    "name": "Liam Silva",
+    "email": "liam.silva81@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "932a230f-934e-562d-8bb6-107796bc2232",
+    "name": "Sofia Okafor",
+    "email": "sofia.okafor91@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "4c6d8343-65c4-5a0d-9fd1-259617698b0c",
+    "name": "Jordan Rossi",
+    "email": "jordan.rossi99@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "f9e9f9f7-caf8-5b9a-b66a-c04609f3b9f4",
+    "name": "Taylor Rossi",
+    "email": "taylor.rossi13@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "dae9d14f-c081-5a4b-b46f-47c5077ab34f",
+    "name": "Quinn Suzuki",
+    "email": "quinn.suzuki82@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "7713662d-a09c-5c75-87d5-c4ee025017fc",
+    "name": "Morgan Ali",
+    "email": "morgan.ali46@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  },
+  {
+    "id": "6e276e6b-485c-51a1-a261-4f3f7153b0bb",
+    "name": "Leo Haddad",
+    "email": "leo.haddad90@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "97b02d9b-41fa-5ec2-94a5-4006c5f4c49e",
+    "name": "Omar Garcia",
+    "email": "omar.garcia69@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  },
+  {
+    "id": "3673992c-84da-571e-b257-9a658401db18",
+    "name": "Morgan Suzuki",
+    "email": "morgan.suzuki49@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "ce2daf17-946d-50af-ae4a-cf47bd1515bd",
+    "name": "Tom Khan",
+    "email": "tom.khan29@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "ecc2818c-f9bf-562e-8489-3293f70680ab",
+    "name": "Yuki Chen",
+    "email": "yuki.chen30@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "bfa154fd-5405-5599-9a4a-775fdb842544",
+    "name": "Kofi Novak",
+    "email": "kofi.novak52@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "76d58f1e-7b4d-5e0f-a9c6-0be12770e594",
+    "name": "Taylor Okafor",
+    "email": "taylor.okafor73@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "030b8df9-adb4-5065-810e-af3769552431",
+    "name": "Jamie Meyer",
+    "email": "jamie.meyer51@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "b3f1092a-edee-5758-8e4e-96caa17cd6d1",
+    "name": "Riley Haddad",
+    "email": "riley.haddad18@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  },
+  {
+    "id": "838a370c-3fd3-5d08-a3e1-4811033bd306",
+    "name": "Raj Khan",
+    "email": "raj.khan69@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "8857304c-19ed-59be-99e2-a3a26ac46db9",
+    "name": "Raj Park",
+    "email": "raj.park55@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "b4a76aea-b9eb-5f96-a6e6-8f6f9ffb614d",
+    "name": "Priya Rossi",
+    "email": "priya.rossi18@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "ae590801-542d-5f01-bdbd-d778cf26be8e",
+    "name": "Taylor Chen",
+    "email": "taylor.chen15@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  },
+  {
+    "id": "11a70478-9881-51db-a2df-d153fcfedb80",
+    "name": "Hana Garcia",
+    "email": "hana.garcia88@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "765d1b3e-734a-5a42-b580-af63b7753829",
+    "name": "Omar Patel",
+    "email": "omar.patel50@corp.com",
+    "org": "hr",
+    "role": "employee"
+  },
+  {
+    "id": "ee59f7f8-c4a2-5567-ac10-efbad71be7d1",
+    "name": "Omar Suzuki",
+    "email": "omar.suzuki68@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "eead9c9e-e2c0-5b5b-aafa-2a317e223b09",
+    "name": "Liam Reyes",
+    "email": "liam.reyes88@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "9c1a13a3-3534-56a3-9624-de62610faf8f",
+    "name": "Leo Khan",
+    "email": "leo.khan97@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "8b06e2ed-49f2-5144-b523-34f8e203fbfb",
+    "name": "Elena Novak",
+    "email": "elena.novak15@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "ef9b5c86-362b-54d7-b8e1-476d23348639",
+    "name": "Diego Garcia",
+    "email": "diego.garcia59@corp.com",
+    "org": "sales",
+    "role": "employee"
+  },
+  {
+    "id": "524f3e8d-2f13-5f70-87a2-2e305e274fd7",
+    "name": "Raj Haddad",
+    "email": "raj.haddad65@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  },
+  {
+    "id": "877272bf-a3f9-5b51-9de0-56e7a5d46a60",
+    "name": "Mia Kim",
+    "email": "mia.kim81@corp.com",
+    "org": "finance",
+    "role": "employee"
+  },
+  {
+    "id": "65b1d55e-fd05-5b87-8b0a-30d7e276887f",
+    "name": "Yuki Costa",
+    "email": "yuki.costa78@corp.com",
+    "org": "engineering",
+    "role": "employee"
+  }
+]

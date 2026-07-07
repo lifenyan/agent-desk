@@ -1,0 +1,164 @@
+[
+  {
+    "id": "fe1f5f27-498e-540a-ba33-12ebea05f9bc",
+    "user_id": "985917b7-ae40-577f-9d96-80db07adb580",
+    "item_id": "3988c654-cd74-5c1d-820b-ca029604e518",
+    "status": "submitted",
+    "approval_state": "pending",
+    "form_values": {
+      "cost_center": "sales",
+      "os_variant": "macos",
+      "business_justification": "Editing marketing collateral for Q3 launch."
+    }
+  },
+  {
+    "id": "f324d3b3-dec1-5e50-a651-746d29e5b128",
+    "user_id": "985917b7-ae40-577f-9d96-80db07adb580",
+    "item_id": "ea7c490e-5e06-5c55-b8d8-1e013361c005",
+    "status": "fulfilled",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "sales"
+    }
+  },
+  {
+    "id": "8a6c7bc5-4049-5c57-b124-21d531e62012",
+    "user_id": "3a9176ca-373b-587c-8fd5-6c9a7d20fd90",
+    "item_id": "d15d52bb-53b4-5905-b164-d63c69c90b8b",
+    "status": "cancelled",
+    "approval_state": "rejected",
+    "form_values": {
+      "cost_center": "finance"
+    }
+  },
+  {
+    "id": "a020b685-7a83-567d-8469-c8457cce2be9",
+    "user_id": "23778057-ba7d-5c42-9c18-de57ca2dcb1a",
+    "item_id": "9ff6f9f4-8c6f-56a8-b558-238ab877f078",
+    "status": "fulfilled",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "sales"
+    }
+  },
+  {
+    "id": "3ff2ad2c-6e91-5a4e-b163-7c9f65b1b99e",
+    "user_id": "f6d940e3-1bc6-5651-9322-c07ef43701e0",
+    "item_id": "ea7c490e-5e06-5c55-b8d8-1e013361c005",
+    "status": "draft",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "hr"
+    }
+  },
+  {
+    "id": "bc7ae835-a00f-5eba-913b-3d45ff9d6f78",
+    "user_id": "b8da90fb-f8f2-54a4-8659-1811a0477c9b",
+    "item_id": "13768e42-6c6d-59c9-b691-64ebb87608ac",
+    "status": "fulfilled",
+    "approval_state": "approved",
+    "form_values": {
+      "cost_center": "engineering"
+    }
+  },
+  {
+    "id": "40337708-9a5c-558e-ac47-db7de7f2defc",
+    "user_id": "4dc2bd85-d428-5205-a9de-c621f0bea2db",
+    "item_id": "d40e0578-b48e-5dcf-955d-c23a66ad419f",
+    "status": "fulfilled",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "sales"
+    }
+  },
+  {
+    "id": "ea3b1bca-4744-5c37-84ce-ac59dabc21d2",
+    "user_id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
+    "item_id": "c9b17bce-627b-5d0e-880a-24ca5a7e3c9c",
+    "status": "fulfilled",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "hr"
+    }
+  },
+  {
+    "id": "6685566c-a67d-5cb5-bdd1-156cef311598",
+    "user_id": "418aeb21-756a-595d-ad73-47b044860845",
+    "item_id": "e049347e-7992-52cd-8f07-aba4a30d8cfb",
+    "status": "submitted",
+    "approval_state": "pending",
+    "form_values": {
+      "cost_center": "finance"
+    }
+  },
+  {
+    "id": "bd3fe08c-ff26-5d87-b470-51aeb9bc55c1",
+    "user_id": "63ad9678-728e-50f0-95e6-f8a3569a6b7e",
+    "item_id": "1c0edf50-157d-5092-8c43-39b85bb54f42",
+    "status": "draft",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "engineering"
+    }
+  },
+  {
+    "id": "80920d60-6cd1-51a2-a426-9fb220a7d2e1",
+    "user_id": "8cfac42f-4ba3-5c77-976a-3de66930019c",
+    "item_id": "57b6650d-ef98-51a3-a355-8da2b482dbb5",
+    "status": "draft",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "finance"
+    }
+  },
+  {
+    "id": "cc5597fc-9b5b-5af0-aa07-3349d5fdea25",
+    "user_id": "0cedd4d0-4203-5d89-9bed-d77415d4f0d6",
+    "item_id": "d15d52bb-53b4-5905-b164-d63c69c90b8b",
+    "status": "cancelled",
+    "approval_state": "rejected",
+    "form_values": {
+      "cost_center": "finance"
+    }
+  },
+  {
+    "id": "61e913b6-aed3-5069-a13d-91ee4c2b74f5",
+    "user_id": "16521f27-3794-5e2e-bce4-61738145d5d4",
+    "item_id": "18000467-1843-55c1-b962-dc155bca6a53",
+    "status": "draft",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "sales"
+    }
+  },
+  {
+    "id": "a4c026ad-6ee5-5a18-b3e2-466728538dd2",
+    "user_id": "3825c661-dcb3-5674-8479-81aa291ac214",
+    "item_id": "dd5e3859-d8d7-5664-a4b5-911e73ae420a",
+    "status": "draft",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "finance"
+    }
+  },
+  {
+    "id": "ef4fff7f-c184-5992-b543-a53f561d7dba",
+    "user_id": "04bec17d-5b64-5f5b-95f2-63dbd190a81c",
+    "item_id": "aacb5093-fe08-5835-a032-e389d184f986",
+    "status": "cancelled",
+    "approval_state": "rejected",
+    "form_values": {
+      "cost_center": "hr"
+    }
+  },
+  {
+    "id": "d0705d60-0dcb-53df-a76c-bd05b92a91ac",
+    "user_id": "16769818-9755-5c7f-83e1-fe30a094e799",
+    "item_id": "ea7c490e-5e06-5c55-b8d8-1e013361c005",
+    "status": "fulfilled",
+    "approval_state": "not_required",
+    "form_values": {
+      "cost_center": "sales"
+    }
+  }
+]

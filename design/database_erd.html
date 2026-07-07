@@ -1,0 +1,142 @@
+<style>
+  body { margin: 0; background: #ffffff; }
+  #erd { padding: 24px; }
+  #erd svg.erDiagram .divider path { stroke-opacity: 0.5; }
+  #erd svg.erDiagram .row-rect-odd path,
+  #erd svg.erDiagram .row-rect-odd rect,
+  #erd svg.erDiagram .row-rect-even path,
+  #erd svg.erDiagram .row-rect-even rect { stroke: none !important; }
+</style>
+<div id="erd"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = false; // force light theme for a clean exported PNG
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '13px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: '#73726c',
+    textColor: '#3d3d3a',
+  },
+});
+const { svg } = await mermaid.render('erd-svg', `erDiagram
+  USERS ||--o{ ASSETS : owns
+  USERS ||--o{ TICKETS : opens
+  USERS ||--o{ ORDERS : places
+  USERS ||--o{ USER_FACTS : has
+  USERS ||--o{ TICKET_COMMENTS : writes
+  KNOWLEDGE_ARTICLES ||--o{ ARTICLE_CHUNKS : chunked_into
+  CATALOG_ITEMS ||--o{ ORDERS : fulfills
+  ASSETS |o--o{ TICKETS : about
+  TICKETS ||--o{ TICKET_COMMENTS : has
+  USERS {
+    uuid id PK
+    string name
+    string email UK
+    string org
+    string role
+  }
+  ASSETS {
+    uuid id PK
+    uuid user_id FK
+    string type
+    string os
+    string model
+  }
+  KNOWLEDGE_ARTICLES {
+    uuid id PK
+    string title
+    text body
+    string category "ticket-category enum"
+    string doc_type "howto/policy/product/..."
+    string version
+    string status
+    timestamp updated_at
+  }
+  ARTICLE_CHUNKS {
+    uuid id PK
+    uuid article_id FK
+    int chunk_index
+    text content
+    string category "denormalized (pre-filter)"
+    string doc_type "denormalized (pre-filter)"
+    string status "denormalized (pre-filter)"
+    string version "denormalized (pre-filter)"
+    vector embedding "1536 dim, HNSW"
+    tsvector tsv "GENERATED, GIN"
+  }
+  CATALOG_ITEMS {
+    uuid id PK
+    string name
+    decimal price
+    string os_compat "text[] multi-OS"
+    jsonb form_schema
+  }
+  ORDERS {
+    uuid id PK
+    uuid user_id FK
+    uuid item_id FK
+    string status
+    string approval_state "separate from status"
+    jsonb form_values
+  }
+  TICKETS {
+    uuid id PK
+    uuid user_id FK
+    uuid asset_id FK "composite FK w/ user_id"
+    string type
+    string title
+    text description
+    string category
+    string priority
+    string status
+    vector embedding "1536 dim, HNSW"
+  }
+  TICKET_COMMENTS {
+    uuid id PK
+    uuid ticket_id FK
+    uuid author_id FK
+    text body
+    timestamp created_at
+  }
+  USER_FACTS {
+    uuid id PK
+    uuid user_id FK
+    string fact_type "UNIQUE(user_id, fact_type)"
+    text fact
+    string source
+    float confidence
+    timestamp updated_at
+  }`);
+document.getElementById('erd').innerHTML = svg;
+
+// Round the entity boxes (match the house style) and de-stroke the striped rows.
+document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0], nums[2], nums[4], nums[6]];
+  const ys = [nums[1], nums[3], nums[5], nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs) - x, h = Math.max(...ys) - y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', x); rect.setAttribute('y', y);
+  rect.setAttribute('width', w); rect.setAttribute('height', h);
+  rect.setAttribute('rx', '8');
+  for (const a of ['fill', 'stroke', 'stroke-width', 'class', 'style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+document.querySelectorAll('#erd svg.erDiagram .row-rect-odd path, #erd svg.erDiagram .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke', 'none');
+});
+document.title = 'rendered';
+</script>

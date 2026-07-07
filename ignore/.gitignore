@@ -1,0 +1,4 @@
+# Ignore everything in this folder (scratch files, secrets, local notes)...
+*
+# ...except this file, so the folder itself stays in the repo.
+!.gitignore
