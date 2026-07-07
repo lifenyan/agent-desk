@@ -83,7 +83,7 @@ fused AS (
            fts.lex_score,
            COALESCE(1.0 / (:rrf_k + vec.rnk), 0) + COALESCE(1.0 / (:rrf_k + fts.rnk), 0)
                AS rrf_score
-    FROM vec FULL OUTER JOIN fts ON vec.id = fts.id
+    FROM vec JOIN fts ON vec.id = fts.id
 )
 SELECT c.id AS chunk_id, c.article_id, a.title AS article_title, c.chunk_index, c.content,
        c.category, c.doc_type, c.status, c.version,
