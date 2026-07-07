@@ -28,3 +28,13 @@
 {"query": "set up my work email on my smartwatch", "expected_article_ids": [], "refusal": true, "negative_space": "smartwatch-email-setup"}
 {"query": "install the company whiteboard app", "expected_article_ids": [], "refusal": true, "negative_space": "whiteboard-app-install"}
 {"query": "how do I get a parking badge", "expected_article_ids": [], "refusal": true, "negative_space": "parking-badge-access"}
+{"query": "how do I map a shared network drive", "expected_article_ids": ["e952bdb4-1241-5936-87b8-64e451c5f65c"]}
+{"query": "my mailbox is full, how do I free up space", "expected_article_ids": ["70bf05bd-9727-5e33-b165-ff9aacd74465"]}
+{"query": "how do I recall an email I sent by mistake", "expected_article_ids": ["8d1e8efa-676a-508b-87a2-1abcd8a536d6"]}
+{"query": "get a visitor onto the guest wifi", "expected_article_ids": ["7018d7ae-8660-5e61-acac-8270721e2374"]}
+{"query": "restore a previous version of a file in AstraCore", "expected_article_ids": ["24d099f6-26fd-5d22-8139-00b4efc680cc"]}
+{"query": "how do I book a conference room from the door panel", "expected_article_ids": [], "refusal": true, "negative_space": "conference-room-booking"}
+{"query": "install the Salesforce desktop app", "expected_article_ids": [], "refusal": true, "negative_space": "salesforce-install"}
+{"query": "what's the dress code policy", "expected_article_ids": [], "refusal": true, "negative_space": "dress-code-policy"}
+{"query": "how do I set up the office 3D printer", "expected_article_ids": [], "refusal": true, "negative_space": "3d-printer-setup"}
+{"query": "replace the battery in my personal phone", "expected_article_ids": [], "refusal": true, "negative_space": "personal-phone-battery"}

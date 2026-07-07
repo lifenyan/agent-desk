@@ -32,15 +32,18 @@ import time
 import uuid
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.cache.redis_client import get_redis
 from app.db.database import SessionLocal
-from app.db.models import Order, Ticket, TicketComment, User
-from evals.common import DATASET_DIR, EVAL_USER, FLOORS, load_jsonl
+from app.db.models import CatalogItem, Order, Ticket, TicketComment, User, UserFact
+from evals.common import DATASET_DIR, EVAL_USER, FLOORS, cost_latency_aggregates, load_jsonl
 
 E2E_PORT = 8123
 CHAT_TIMEOUT = 240.0
+# Memory flows wait for the post-response background extraction (ADR-031) to land a
+# user_facts row; one LLM call, so seconds — the deadline is generous, not a sleep.
+FACT_POLL_TIMEOUT = 90.0
 
 
 def _flush_semcache() -> None:
@@ -84,39 +87,91 @@ def _spawn_api() -> tuple[subprocess.Popen, str]:
     raise RuntimeError("e2e API did not become ready on /readyz within 60s")
 
 
-def _chat(client: httpx.Client, base: str, message: str, session_id: str) -> dict:
+def _terminate(proc: subprocess.Popen) -> None:
+    """Stop the suite-owned server WITHOUT ever raising: uvicorn's graceful shutdown waits for
+    in-flight background work (the ADR-031 extraction task) and can outlast a polite timeout —
+    observed live: a TimeoutExpired here skipped _cleanup entirely and left both a squatting
+    server on the e2e port and trial rows in the DB. Escalate to SIGKILL instead."""
+    proc.terminate()
+    try:
+        proc.wait(timeout=15)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=10)
+
+
+def _chat(
+    client: httpx.Client, base: str, message: str, session_id: str, user: str = EVAL_USER
+) -> dict:
     resp = client.post(
         f"{base}/chat",
-        json={"message": message, "user_id": EVAL_USER, "session_id": session_id},
+        json={"message": message, "user_id": user, "session_id": session_id},
         timeout=CHAT_TIMEOUT,
     )
     resp.raise_for_status()
     return resp.json()
 
 
-def _snapshot() -> tuple[set, set, set]:
+def _snapshot() -> dict:
+    """Ids of every row type e2e flows can create — plus the CONTENT of user_facts and of
+    ticket status/priority (M5): the background extractor may UPDATE a seeded fact in place,
+    and an incident-agent run may bump a seeded ticket's priority while linking (observed on
+    the first baseline run: multi_intent left the seeded Wi-Fi ticket at high). Id-diffs
+    can't see in-place updates, so both are restored field-by-field in cleanup."""
     with SessionLocal() as s:
-        return (
-            set(s.scalars(select(Order.id))),
-            set(s.scalars(select(Ticket.id))),
-            set(s.scalars(select(TicketComment.id))),
-        )
+        return {
+            "orders": set(s.scalars(select(Order.id))),
+            "tickets": set(s.scalars(select(Ticket.id))),
+            "ticket_state": {
+                t.id: (t.status, t.priority, t.category) for t in s.scalars(select(Ticket))
+            },
+            "comments": set(s.scalars(select(TicketComment.id))),
+            "facts": {
+                f.id: (f.fact_type, f.fact, f.source, f.confidence)
+                for f in s.scalars(select(UserFact))
+            },
+            "sessions": set(s.scalars(text("SELECT session_id FROM agent_sessions")).all()),
+        }
 
 
-def _cleanup(baseline: tuple[set, set, set]) -> None:
-    before_orders, before_tickets, before_comments = baseline
+def _cleanup(baseline: dict) -> None:
     with SessionLocal() as s:
-        for c in s.scalars(select(TicketComment).where(TicketComment.id.notin_(before_comments))):
+        for c in s.scalars(
+            select(TicketComment).where(TicketComment.id.notin_(baseline["comments"]))
+        ):
             s.delete(c)
-        for t in s.scalars(select(Ticket).where(Ticket.id.notin_(before_tickets))):
+        for t in s.scalars(select(Ticket).where(Ticket.id.notin_(baseline["tickets"]))):
             s.delete(t)
-        for o in s.scalars(select(Order).where(Order.id.notin_(before_orders))):
+        # Seeded tickets a flow's agent mutated in place (priority bumps while linking).
+        for t in s.scalars(select(Ticket).where(Ticket.id.in_(baseline["ticket_state"]))):
+            before = baseline["ticket_state"][t.id]
+            if (t.status, t.priority, t.category) != before:
+                t.status, t.priority, t.category = before
+        for o in s.scalars(select(Order).where(Order.id.notin_(baseline["orders"]))):
             s.delete(o)
+        # user_facts: delete extracted rows, restore any seeded row the merge rule replaced.
+        for f in s.scalars(select(UserFact)):
+            before = baseline["facts"].get(f.id)
+            if before is None:
+                s.delete(f)
+            elif (f.fact_type, f.fact, f.source, f.confidence) != before:
+                f.fact_type, f.fact, f.source, f.confidence = before
+        # SDK session rows (agent_messages cascade); keyed by uuid4, so never seeded.
+        new_sessions = (
+            set(s.scalars(text("SELECT session_id FROM agent_sessions")).all())
+            - baseline["sessions"]
+        )
+        for sid in new_sessions:
+            s.execute(text("DELETE FROM agent_sessions WHERE session_id = :sid"), {"sid": sid})
         s.commit()
 
 
-def _demo_user_id(s) -> uuid.UUID:
-    return s.scalar(select(User.id).where(User.email == EVAL_USER))
+def _user_id(s, email: str = EVAL_USER) -> uuid.UUID:
+    return s.scalar(select(User.id).where(User.email == email))
+
+
+# Kept name for the original flows' readability; new flows resolve their own acting user.
+_demo_user_id = _user_id
 
 
 # --- flows -----------------------------------------------------------------------------------
@@ -231,21 +286,23 @@ def _flow_incident_link(base: str, case: dict) -> dict:
 
 def _flow_incident_create(base: str, case: dict) -> dict:
     """Fresh issue: expect exactly one NEW ticket, owned by the acting user, embedded at
-    creation (invariant 3)."""
+    creation (invariant 3). `user` in the case overrides the acting user — the isolation
+    variant runs as a non-demo user and asserts the row lands under THAT identity."""
+    acting = case.get("user", EVAL_USER)
     with SessionLocal() as s:
         before_tickets = set(s.scalars(select(Ticket.id)))
     with httpx.Client() as client:
-        _chat(client, base, case["report"], str(uuid.uuid4()))
+        _chat(client, base, case["report"], str(uuid.uuid4()), acting)
     with SessionLocal() as s:
-        demo_id = _demo_user_id(s)
+        acting_id = _user_id(s, acting)
         new_ids = set(s.scalars(select(Ticket.id))) - before_tickets
         if len(new_ids) != 1:
             return {"ok": False, "detail": f"expected exactly 1 new ticket, got {len(new_ids)}"}
         t = s.get(Ticket, next(iter(new_ids)))
-        ok = t.user_id == demo_id and t.embedding is not None
+        ok = t.user_id == acting_id and t.embedding is not None
         detail = (
-            f"ticket {t.title!r} owner={'right user' if t.user_id == demo_id else 'WRONG USER'} "
-            f"embedded={'yes' if t.embedding is not None else 'NO'}"
+            f"ticket {t.title!r} owner={'right user' if t.user_id == acting_id else 'WRONG USER'}"
+            f" ({acting}) embedded={'yes' if t.embedding is not None else 'NO'}"
         )
     return {"ok": ok, "detail": detail}
 
@@ -268,20 +325,291 @@ def _flow_knowledge_cache(base: str, case: dict) -> dict:
 
 
 def _flow_refusal(base: str, case: dict) -> dict:
-    """Out-of-KB question: refuses (no Sources), offers a ticket, zero citations, NOT cached —
-    and NOT stored (re-asking in a fresh session must miss the cache again)."""
+    """Out-of-KB question: refuses (no Sources), offers a ticket, NOT cached — and NOT stored
+    (re-asking in a fresh session must miss the cache again).
+
+    Zero citations holds only for STAGE-1 refusals (evidence gate fails -> payloads skipped).
+    A stage-2 refusal (gate passes, agent judges no coverage — the smartwatch probe, 0.611)
+    correctly returns the ADJACENT articles as citations: ChatResponse.citations is documented
+    as "retrieved sources put in front of the model", and the agent may name the adjacent
+    article as possibly related. So the check is dataset-scoped via `stage1: true` — learned
+    from the first 18-flow baseline run, disclosed in DECISIONS.md (M5 honest accounting)."""
     with httpx.Client() as client:
         first = _chat(client, base, case["ask"], str(uuid.uuid4()))
         checks = {
             "not cached": not first["cached"],
-            "zero citations": not first["citations"],
             "no Sources list": "Sources:" not in first["answer"],
             "offers a ticket": "ticket" in first["answer"].lower(),
         }
+        if case.get("stage1"):
+            checks["zero citations"] = not first["citations"]
         second = _chat(client, base, case["ask"], str(uuid.uuid4()))
         checks["refusal was never stored"] = not second["cached"]
     failed = [name for name, ok in checks.items() if not ok]
     return {"ok": not failed, "detail": "all checks" if not failed else f"failed: {failed}"}
+
+
+def _flow_knowledge_basic(base: str, case: dict) -> dict:
+    """Plain knowledge contract without the cache half: fresh answer with citations and the
+    ADR-017 "Sources:" list (the cache pair stays its own flow — its paraphrase is MEASURED
+    above the 0.75 threshold, and inventing new pairs by eye is how thresholds get vibed)."""
+    with httpx.Client() as client:
+        resp = _chat(client, base, case["ask"], str(uuid.uuid4()))
+    checks = {
+        "not cached": not resp["cached"],
+        "has citations": bool(resp["citations"]),
+        "has Sources": "Sources:" in resp["answer"],
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    return {"ok": not failed, "detail": "all checks" if not failed else f"failed: {failed}"}
+
+
+def _flow_refusal_to_ticket(base: str, case: dict) -> dict:
+    """The knowledge→incident edge (ADR-022) as product: an out-of-KB question refuses and
+    offers a ticket; the user ACCEPTS in the same session; a ticket must exist afterwards —
+    owned by the acting user, embedded — and only then."""
+    with SessionLocal() as s:
+        before_tickets = set(s.scalars(select(Ticket.id)))
+    sid = str(uuid.uuid4())
+    with httpx.Client() as client:
+        first = _chat(client, base, case["ask"], sid)
+        checks = {
+            "refused (no Sources)": "Sources:" not in first["answer"],
+            "offered a ticket": "ticket" in first["answer"].lower(),
+        }
+        with SessionLocal() as s:
+            checks["no ticket before acceptance"] = (
+                set(s.scalars(select(Ticket.id))) == before_tickets
+            )
+        _chat(client, base, case["accept"], sid)
+        # Same contract-not-turn-count discipline as the order flows (ADR-027 addendum): the
+        # incident agent may ask one more question (asset? priority?) before creating —
+        # observed on the first trial run. One bounded nudge, then it fails for real.
+        with SessionLocal() as s:
+            if set(s.scalars(select(Ticket.id))) == before_tickets:
+                _chat(
+                    client,
+                    base,
+                    "No further questions needed — please create the ticket now with the "
+                    "details you have.",
+                    sid,
+                )
+    with SessionLocal() as s:
+        demo_id = _user_id(s)
+        new = [s.get(Ticket, t) for t in set(s.scalars(select(Ticket.id))) - before_tickets]
+        checks["exactly 1 new ticket"] = len(new) == 1
+        checks["right owner + embedded"] = bool(new) and all(
+            t.user_id == demo_id and t.embedding is not None for t in new
+        )
+    failed = [name for name, ok in checks.items() if not ok]
+    return {"ok": not failed, "detail": "all checks" if not failed else f"failed: {failed}"}
+
+
+def _flow_multi_intent(base: str, case: dict) -> dict:
+    """One message, two domains (incident + knowledge). The incident half is a hard side
+    effect: the agent acted on the report (new ticket OR a comment on the user's existing
+    one — demo already owns an open Wi-Fi ticket, so linking is correct too). The knowledge
+    half may take a nudge turn (specialists return to the router on topic change; the router
+    routes the FIRST actionable request first)."""
+    with SessionLocal() as s:
+        before_tickets = set(s.scalars(select(Ticket.id)))
+        before_comments = set(s.scalars(select(TicketComment.id)))
+    sid = str(uuid.uuid4())
+    with httpx.Client() as client:
+        resp = _chat(client, base, case["message"], sid)
+        answer = resp["answer"]
+        if case["knowledge_keyword"] not in answer.lower() and "Sources:" not in answer:
+            resp = _chat(client, base, case["nudge"], sid)
+            answer = resp["answer"]
+    with SessionLocal() as s:
+        demo_id = _user_id(s)
+        new_tickets = [s.get(Ticket, t) for t in set(s.scalars(select(Ticket.id))) - before_tickets]
+        new_comments = list(
+            s.scalars(select(TicketComment).where(TicketComment.id.notin_(before_comments)))
+        )
+        incident_acted = any(t.user_id == demo_id for t in new_tickets) or any(
+            c.author_id == demo_id for c in new_comments
+        )
+    checks = {
+        "incident half acted (ticket or comment)": incident_acted,
+        "knowledge half answered": case["knowledge_keyword"] in answer.lower()
+        or "Sources:" in answer,
+    }
+    failed = [name for name, ok in checks.items() if not ok]
+    return {"ok": not failed, "detail": "all checks" if not failed else f"failed: {failed}"}
+
+
+def _flow_ticket_update(base: str, case: dict) -> dict:
+    """update_ticket path: the user asks to bump their OWN existing ticket; assert the seeded
+    row actually changed (priority), then restore it — this flow must leave the demo DB
+    exactly as found (updates aren't caught by the id-diff cleanup)."""
+    with SessionLocal() as s:
+        demo_id = _user_id(s)
+        ticket = s.scalar(
+            select(Ticket).where(Ticket.user_id == demo_id, Ticket.title == case["ticket_title"])
+        )
+        if ticket is None:
+            return {"ok": False, "detail": f"seeded ticket {case['ticket_title']!r} not found"}
+        ticket_id, before_priority, before_status = ticket.id, ticket.priority, ticket.status
+    try:
+        sid = str(uuid.uuid4())
+        with httpx.Client() as client:
+            _chat(client, base, case["message"], sid)
+            # ADR-027-addendum discipline: the agent may ask which ticket / confirm before
+            # writing (observed on the first 18-flow run). One bounded confirmation turn;
+            # the contract stays "the row changed", never "in exactly one turn".
+            with SessionLocal() as s:
+                if s.get(Ticket, ticket_id).priority != case["expected_priority"]:
+                    _chat(
+                        client,
+                        base,
+                        "Yes, that's the one — please set its priority to high now, "
+                        "no further questions needed.",
+                        sid,
+                    )
+        with SessionLocal() as s:
+            t = s.get(Ticket, ticket_id)
+            got_priority, got_status = t.priority, t.status
+        ok = got_priority == case["expected_priority"] and got_status == before_status
+        return {
+            "ok": ok,
+            "detail": (
+                f"priority {before_priority} -> {got_priority} "
+                f"(expected {case['expected_priority']}), status untouched: "
+                f"{got_status == before_status}"
+            ),
+        }
+    finally:
+        with SessionLocal() as s:
+            t = s.get(Ticket, ticket_id)
+            t.priority, t.status = before_priority, before_status
+            s.commit()
+
+
+def _flow_order_autoplace(base: str, case: dict) -> dict:
+    """≤ $500 order: places in ONE run with no approval round-trip (submitted/not_required —
+    the other half of the ADR-020 gate), and its form_values honor the item's form_schema:
+    only declared field names, every required field filled."""
+    with SessionLocal() as s:
+        before = set(s.scalars(select(Order.id)))
+    sid = str(uuid.uuid4())
+    with httpx.Client() as client:
+        for message in case["messages"]:
+            _chat(client, base, message, sid)
+        for _ in range(2):
+            with SessionLocal() as s:
+                if set(s.scalars(select(Order.id))) - before:
+                    break
+            _chat(
+                client,
+                base,
+                "Yes, everything is confirmed — please place the order now with my defaults.",
+                sid,
+            )
+    with SessionLocal() as s:
+        demo_id = _user_id(s)
+        new = [s.get(Order, oid) for oid in set(s.scalars(select(Order.id))) - before]
+        if len(new) != 1:
+            return {"ok": False, "detail": f"expected exactly 1 new order, got {len(new)}"}
+        order = new[0]
+        schema_fields = {f["name"]: f for f in s.get(CatalogItem, order.item_id).form_schema}
+        undeclared = set(order.form_values or {}) - set(schema_fields)
+        missing_required = [
+            name
+            for name, f in schema_fields.items()
+            if f.get("required") and not (order.form_values or {}).get(name)
+        ]
+        checks = {
+            "right owner": order.user_id == demo_id,
+            "placed without HITL": (order.status, order.approval_state)
+            == ("submitted", "not_required"),
+            "no undeclared form fields": not undeclared,
+            "required fields filled": not missing_required,
+        }
+    failed = [name for name, ok in checks.items() if not ok]
+    detail = "all checks" if not failed else f"failed: {failed}"
+    if undeclared or missing_required:
+        detail += f" (undeclared={sorted(undeclared)}, missing={missing_required})"
+    return {"ok": not failed, "detail": detail}
+
+
+def _flow_order_unorderable(base: str, case: dict) -> dict:
+    """OS-incompatible item (windows-only AutoCAD vs the demo user's mac — measured failing
+    CORRECTLY in M4): the run must end with NO order row, in any state."""
+    with SessionLocal() as s:
+        before = set(s.scalars(select(Order.id)))
+    with httpx.Client() as client:
+        _chat(client, base, case["message"], str(uuid.uuid4()))
+    with SessionLocal() as s:
+        new = [s.get(Order, oid) for oid in set(s.scalars(select(Order.id))) - before]
+    if new:
+        states = [(o.status, o.approval_state) for o in new]
+        return {"ok": False, "detail": f"order row(s) created for incompatible item: {states}"}
+    return {"ok": True, "detail": "no order row created (incompatibility surfaced instead)"}
+
+
+def _flow_memory_carryover(base: str, case: dict) -> dict:
+    """The ADR-031 loop as product: a durable fact mentioned in session A is extracted
+    (user_facts row — the hard side effect), then a FRESH session B answers from the injected
+    fact. Runs as a fact-less non-demo user so the demo user's seeded facts stay untouched;
+    the run's rows are removed by the user_facts snapshot cleanup."""
+    acting = case["user"]
+    with SessionLocal() as s:
+        acting_id = _user_id(s, acting)
+        before_facts = set(s.scalars(select(UserFact.id).where(UserFact.user_id == acting_id)))
+    with httpx.Client() as client:
+        _chat(client, base, case["mention"], str(uuid.uuid4()), acting)
+        deadline = time.time() + FACT_POLL_TIMEOUT
+        new_facts = []
+        while time.time() < deadline and not new_facts:
+            with SessionLocal() as s:
+                new_facts = list(
+                    s.scalars(
+                        select(UserFact).where(
+                            UserFact.user_id == acting_id, UserFact.id.notin_(before_facts)
+                        )
+                    )
+                )
+            if not new_facts:
+                time.sleep(2)
+        if not new_facts:
+            return {"ok": False, "detail": "no fact extracted within the poll window"}
+        fact_summary = f"({new_facts[0].fact_type}) {new_facts[0].fact!r}"
+        recall = _chat(client, base, case["recall"], str(uuid.uuid4()), acting)
+    used = case["recall_keyword"] in recall["answer"].lower()
+    return {
+        "ok": used,
+        "detail": (
+            f"extracted {fact_summary}; session B "
+            f"{'used it' if used else 'did NOT use it: ' + recall['answer'][:80]!r}"
+        ),
+    }
+
+
+def _flow_chat_restart(base: str, case: dict, respawn=None) -> dict:
+    """Chat history survives an API restart (the M2 e2e proved it for ORDER state; this is
+    the chat-history half ADR-030 exists for): mention a distinctive token, kill + respawn
+    the server, continue the SAME session and expect the token recalled. With an external
+    server (E2E_API_URL) there is nothing we may restart — continuity is still asserted, the
+    restart itself is skipped and disclosed in the detail."""
+    sid = str(uuid.uuid4())
+    with httpx.Client() as client:
+        _chat(client, base, case["mention"], sid)
+    restarted = False
+    if respawn is not None:
+        respawn()
+        restarted = True
+    with httpx.Client() as client:
+        recall = _chat(client, base, case["recall"], sid)
+    ok = case["token"].lower() in recall["answer"].lower()
+    note = "across restart" if restarted else "NO restart (external server)"
+    return {
+        "ok": ok,
+        "detail": (
+            f"token {case['token']!r} {'recalled' if ok else 'LOST'} {note}"
+            + ("" if ok else f": {recall['answer'][:80]!r}")
+        ),
+    }
 
 
 _FLOWS = {
@@ -291,6 +619,14 @@ _FLOWS = {
     "incident_create": _flow_incident_create,
     "knowledge_cache": _flow_knowledge_cache,
     "refusal": _flow_refusal,
+    "knowledge_basic": _flow_knowledge_basic,
+    "refusal_to_ticket": _flow_refusal_to_ticket,
+    "multi_intent": _flow_multi_intent,
+    "ticket_update": _flow_ticket_update,
+    "order_autoplace": _flow_order_autoplace,
+    "order_unorderable": _flow_order_unorderable,
+    "memory_carryover": _flow_memory_carryover,
+    "chat_restart": _flow_chat_restart,  # run_e2e passes respawn when it owns the server
 }
 
 
@@ -307,18 +643,37 @@ def run_e2e(**_ignored) -> dict:
     else:
         proc, base = _spawn_api()
 
+    def _respawn() -> None:
+        """Kill + relaunch the suite-owned server (chat_restart flow). nonlocal so cleanup
+        always terminates the CURRENT process, not a dead ancestor."""
+        nonlocal proc
+        _terminate(proc)
+        proc, _ = _spawn_api()
+
     rows = []
     try:
         for case in cases:
+            t0 = time.perf_counter()
             try:
-                result = _FLOWS[case["flow"]](base, case)
+                if case["flow"] == "chat_restart":
+                    result = _flow_chat_restart(base, case, respawn=None if external else _respawn)
+                else:
+                    result = _FLOWS[case["flow"]](base, case)
             except Exception as exc:  # noqa: BLE001 — a crashed flow is a failure, not a harness crash
                 result = {"ok": False, "detail": f"<error: {exc.__class__.__name__}: {exc}>"}
-            rows.append({"flow": case["flow"], **result})
+            # Wall-clock only: flows bill through the server process, whose SDK usage isn't
+            # visible over HTTP — the M6 Langfuse wiring is where per-flow cost lands.
+            rows.append(
+                {
+                    "flow": case["flow"],
+                    **result,
+                    "latency_s": round(time.perf_counter() - t0, 2),
+                    "cost_usd": None,
+                }
+            )
     finally:
         if proc is not None:
-            proc.terminate()
-            proc.wait(timeout=10)
+            _terminate(proc)  # never raises — _cleanup below must always run
         _cleanup(baseline)
         _flush_semcache()
 
@@ -328,5 +683,6 @@ def run_e2e(**_ignored) -> dict:
         "rows": rows,
         "aggregates": {"flows_passed": passed_flows, "n": len(rows)},
     }
+    report["cost_latency"] = cost_latency_aggregates(rows)
     report["passed"] = (passed_flows / len(rows)) >= FLOORS["e2e"]["flow_pass_rate"]
     return report

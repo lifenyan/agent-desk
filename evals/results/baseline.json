@@ -1,0 +1,1604 @@
+{
+  "generated_at": "2026-07-07T22:29:00+00:00",
+  "models": {
+    "specialist": "gpt-5-mini",
+    "triage": "gpt-5-mini",
+    "embedding": "text-embedding-3-small",
+    "judge": "gpt-5"
+  },
+  "wall_time_s": 2009.5,
+  "total_cost_usd": 0.4166,
+  "passed": true,
+  "reports": [
+    {
+      "suite": "retrieval",
+      "k": 5,
+      "threshold": 0.45,
+      "refusal_mode": "agent",
+      "rows": [
+        {
+          "query": "how do I reset my password",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6501309468215655,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.04,
+          "cost_usd": null
+        },
+        {
+          "query": "I can't log in with SSO, need a password reset",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6789133762056286,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "my account is locked out",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.5644018246712784,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "how do I set up MFA",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6907378589560258,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "I lost my phone with the authenticator app",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.5404046520051831,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "compare AstraCore v5.1 and v5.2",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.694402101334344,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "what's new in AstraCore v5.0",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7494092700185483,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "set up the VPN on my Mac",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 0.5,
+          "top_cosine": 0.6874131797131552,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "set up VPN on Windows",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.70918735937007,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "my VPN keeps dropping",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6565381516878936,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "software reimbursement policy",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.697861098812293,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "when am I eligible for a new laptop",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.5492734456714619,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "my laptop is really slow",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6120933301777524,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "my screen keeps flickering",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6285463720256939,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "how do I install Photoshop",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6209153816755622,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "install a JetBrains IDE",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6996686091067114,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "set up Git and SSH keys",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7349821448622287,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "how do I report a phishing email",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7349639119241412,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "set an out of office reply",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7109231944342118,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "connect an external monitor",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.684065310389797,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "add a network printer",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7441766015869579,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "share a folder in AstraCore",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7641337409756797,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "first day IT setup checklist",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.782649221464799,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "are we allowed to use AI tools like ChatGPT",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.46611725374535895,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "how do I install Docker",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.609115007692777,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "how do I pair my Bluetooth keyboard",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.388349992398364,
+          "pass": true,
+          "latency_s": 11.11,
+          "input_tokens": 4581,
+          "output_tokens": 779,
+          "requests": 2,
+          "cost_usd": 0.002703
+        },
+        {
+          "query": "how do I fix printer driver error E-505",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.4603848062306991,
+          "pass": true,
+          "latency_s": 9.73,
+          "input_tokens": 4269,
+          "output_tokens": 713,
+          "requests": 2,
+          "cost_usd": 0.002493
+        },
+        {
+          "query": "set up my work email on my smartwatch",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.6105415552419977,
+          "pass": true,
+          "latency_s": 9.47,
+          "input_tokens": 4715,
+          "output_tokens": 913,
+          "requests": 2,
+          "cost_usd": 0.003005
+        },
+        {
+          "query": "install the company whiteboard app",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.44753956270271067,
+          "pass": true,
+          "latency_s": 9.39,
+          "input_tokens": 4788,
+          "output_tokens": 849,
+          "requests": 2,
+          "cost_usd": 0.002895
+        },
+        {
+          "query": "how do I get a parking badge",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.25993651468408707,
+          "pass": true,
+          "latency_s": 11.22,
+          "input_tokens": 4778,
+          "output_tokens": 923,
+          "requests": 2,
+          "cost_usd": 0.00304
+        },
+        {
+          "query": "how do I map a shared network drive",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7110383897166633,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "my mailbox is full, how do I free up space",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7772518889269779,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "how do I recall an email I sent by mistake",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6915944021941144,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "get a visitor onto the guest wifi",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.6052606979745703,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "restore a previous version of a file in AstraCore",
+          "kind": "answerable",
+          "recall": 1.0,
+          "mrr": 1.0,
+          "top_cosine": 0.7902625400797799,
+          "pass": true,
+          "false_refusal": false,
+          "latency_s": 0.01,
+          "cost_usd": null
+        },
+        {
+          "query": "how do I book a conference room from the door panel",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.37262246569276736,
+          "pass": true,
+          "latency_s": 7.63,
+          "input_tokens": 4734,
+          "output_tokens": 595,
+          "requests": 2,
+          "cost_usd": 0.002374
+        },
+        {
+          "query": "install the Salesforce desktop app",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.4085653395940916,
+          "pass": true,
+          "latency_s": 8.74,
+          "input_tokens": 4430,
+          "output_tokens": 660,
+          "requests": 2,
+          "cost_usd": 0.002427
+        },
+        {
+          "query": "what's the dress code policy",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.3969102520349095,
+          "pass": true,
+          "latency_s": 7.98,
+          "input_tokens": 4545,
+          "output_tokens": 622,
+          "requests": 2,
+          "cost_usd": 0.00238
+        },
+        {
+          "query": "how do I set up the office 3D printer",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.4527046788763647,
+          "pass": true,
+          "latency_s": 14.94,
+          "input_tokens": 4235,
+          "output_tokens": 1130,
+          "requests": 2,
+          "cost_usd": 0.003319
+        },
+        {
+          "query": "replace the battery in my personal phone",
+          "kind": "refusal/agent",
+          "recall": null,
+          "mrr": null,
+          "top_cosine": 0.4232311924134198,
+          "pass": true,
+          "latency_s": 11.32,
+          "input_tokens": 4400,
+          "output_tokens": 934,
+          "requests": 2,
+          "cost_usd": 0.002968
+        }
+      ],
+      "aggregates": {
+        "recall_at_k": 1.0,
+        "mrr": 0.9833333333333333,
+        "false_refusals": 0,
+        "refusal_accuracy": 1.0,
+        "n_answerable": 30,
+        "n_refusal": 10
+      },
+      "cost_latency": {
+        "total_cost_usd": 0.0276,
+        "cases_with_cost": 10,
+        "total_latency_s": 101.9,
+        "latency_p50_s": 0.01,
+        "latency_p95_s": 11.22
+      },
+      "passed": true
+    },
+    {
+      "suite": "routing",
+      "rows": [
+        {
+          "query": "How do I reset my password?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles"
+          ],
+          "latency_s": 32.12,
+          "input_tokens": 6422,
+          "output_tokens": 2012,
+          "requests": 3,
+          "cost_usd": 0.005629
+        },
+        {
+          "query": "What's the policy on installing personal software on my work laptop?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles"
+          ],
+          "latency_s": 23.03,
+          "input_tokens": 7261,
+          "output_tokens": 1846,
+          "requests": 3,
+          "cost_usd": 0.005507
+        },
+        {
+          "query": "What's new in v5.2?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_release_notes"
+          ],
+          "latency_s": 14.98,
+          "input_tokens": 4829,
+          "output_tokens": 1369,
+          "requests": 3,
+          "cost_usd": 0.003945
+        },
+        {
+          "query": "How do I set up my company email on my phone?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles"
+          ],
+          "latency_s": 15.7,
+          "input_tokens": 5900,
+          "output_tokens": 1242,
+          "requests": 3,
+          "cost_usd": 0.003959
+        },
+        {
+          "query": "How do I connect to the office VPN from home?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles"
+          ],
+          "latency_s": 20.69,
+          "input_tokens": 6474,
+          "output_tokens": 1722,
+          "requests": 3,
+          "cost_usd": 0.005063
+        },
+        {
+          "query": "Compare the v5.1 and v5.2 release notes for me.",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_release_notes"
+          ],
+          "latency_s": 30.05,
+          "input_tokens": 5699,
+          "output_tokens": 2203,
+          "requests": 3,
+          "cost_usd": 0.005831
+        },
+        {
+          "query": "Is there a guide for setting up two-factor authentication?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles"
+          ],
+          "latency_s": 19.28,
+          "input_tokens": 7198,
+          "output_tokens": 1838,
+          "requests": 3,
+          "cost_usd": 0.005476
+        },
+        {
+          "query": "What's the process for getting IT equipment for a new hire?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles"
+          ],
+          "latency_s": 27.36,
+          "input_tokens": 6818,
+          "output_tokens": 2053,
+          "requests": 3,
+          "cost_usd": 0.00581
+        },
+        {
+          "query": "I need a new laptop.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "get_user_profile",
+            "list_catalog_items"
+          ],
+          "latency_s": 26.42,
+          "input_tokens": 13706,
+          "output_tokens": 1795,
+          "requests": 5,
+          "cost_usd": 0.007017
+        },
+        {
+          "query": "Order me an Adobe Photoshop license.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "get_user_profile",
+            "list_catalog_items"
+          ],
+          "latency_s": 22.74,
+          "input_tokens": 11125,
+          "output_tokens": 1585,
+          "requests": 4,
+          "cost_usd": 0.005951
+        },
+        {
+          "query": "Can I get a second monitor for my desk?",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "get_user_profile",
+            "list_catalog_items"
+          ],
+          "latency_s": 20.53,
+          "input_tokens": 11011,
+          "output_tokens": 1665,
+          "requests": 4,
+          "cost_usd": 0.006083
+        },
+        {
+          "query": "I'd like to request a JetBrains IDE license.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "get_user_profile",
+            "list_catalog_items"
+          ],
+          "latency_s": 16.24,
+          "input_tokens": 9771,
+          "output_tokens": 1119,
+          "requests": 4,
+          "cost_usd": 0.004681
+        },
+        {
+          "query": "Please order a corporate iPhone for me.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "get_user_profile",
+            "list_catalog_items"
+          ],
+          "latency_s": 34.27,
+          "input_tokens": 14335,
+          "output_tokens": 1905,
+          "requests": 5,
+          "cost_usd": 0.007394
+        },
+        {
+          "query": "I want to buy a Tableau license for data analysis.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "get_user_profile",
+            "list_catalog_items"
+          ],
+          "latency_s": 21.27,
+          "input_tokens": 10960,
+          "output_tokens": 1741,
+          "requests": 4,
+          "cost_usd": 0.006222
+        },
+        {
+          "query": "I'm requesting a USB-C docking station for my workspace.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "list_catalog_items",
+            "get_user_profile"
+          ],
+          "latency_s": 20.26,
+          "input_tokens": 16425,
+          "output_tokens": 1169,
+          "requests": 5,
+          "cost_usd": 0.006444
+        },
+        {
+          "query": "Get me a copy of AutoCAD.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "get_user_profile",
+            "list_catalog_items"
+          ],
+          "latency_s": 20.85,
+          "input_tokens": 11271,
+          "output_tokens": 1790,
+          "requests": 5,
+          "cost_usd": 0.006398
+        },
+        {
+          "query": "My VPN keeps disconnecting every few minutes \u2014 can IT look into it?",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "get_user_assets",
+            "search_similar_tickets",
+            "add_ticket_comment"
+          ],
+          "latency_s": 26.71,
+          "input_tokens": 13289,
+          "output_tokens": 2199,
+          "requests": 5,
+          "cost_usd": 0.00772
+        },
+        {
+          "query": "I'm locked out of my account and the self-service reset didn't work. Please unlock it.",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "search_similar_tickets",
+            "create_ticket"
+          ],
+          "latency_s": 25.41,
+          "input_tokens": 12846,
+          "output_tokens": 2141,
+          "requests": 5,
+          "cost_usd": 0.007494
+        },
+        {
+          "query": "The shared printer is broken, nothing prints \u2014 can someone come fix it?",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile"
+          ],
+          "latency_s": 23.78,
+          "input_tokens": 6759,
+          "output_tokens": 2293,
+          "requests": 3,
+          "cost_usd": 0.006276
+        },
+        {
+          "query": "My laptop battery dies within an hour, I think it needs to be serviced.",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "get_user_assets",
+            "search_similar_tickets",
+            "create_ticket"
+          ],
+          "latency_s": 28.54,
+          "input_tokens": 13634,
+          "output_tokens": 2425,
+          "requests": 5,
+          "cost_usd": 0.008259
+        },
+        {
+          "query": "Calendar sync is broken on my phone even after I re-added the account twice \u2014 please have IT look at it.",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "get_user_assets",
+            "search_similar_tickets",
+            "create_ticket"
+          ],
+          "latency_s": 31.55,
+          "input_tokens": 13001,
+          "output_tokens": 2450,
+          "requests": 5,
+          "cost_usd": 0.00815
+        },
+        {
+          "query": "The software update on my machine has been stuck at 40% for hours.",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "get_user_assets",
+            "search_similar_tickets",
+            "create_ticket"
+          ],
+          "latency_s": 37.55,
+          "input_tokens": 13490,
+          "output_tokens": 2796,
+          "requests": 5,
+          "cost_usd": 0.008965
+        },
+        {
+          "query": "My docking station isn't detected anymore since yesterday.",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "get_user_assets",
+            "search_similar_tickets",
+            "add_ticket_comment"
+          ],
+          "latency_s": 30.21,
+          "input_tokens": 14545,
+          "output_tokens": 2716,
+          "requests": 5,
+          "cost_usd": 0.009068
+        },
+        {
+          "query": "Please close my ticket about the monitor issue \u2014 it resolved itself.",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": false,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_similar_tickets",
+            "get_user_profile"
+          ],
+          "latency_s": 24.92,
+          "input_tokens": 11324,
+          "output_tokens": 2051,
+          "requests": 4,
+          "cost_usd": 0.006933
+        },
+        {
+          "query": "Reset my password AND show me the v5.1 release notes.",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": true,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles",
+            "get_release_notes"
+          ],
+          "latency_s": 30.02,
+          "input_tokens": 8707,
+          "output_tokens": 2684,
+          "requests": 3,
+          "cost_usd": 0.007545,
+          "multi_intent_ok": true
+        },
+        {
+          "query": "My laptop is ancient and slow honestly, I think it's time for a replacement.",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": true,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "list_catalog_items",
+            "get_user_profile"
+          ],
+          "latency_s": 15.93,
+          "input_tokens": 15234,
+          "output_tokens": 1229,
+          "requests": 5,
+          "cost_usd": 0.006267
+        },
+        {
+          "query": "Photoshop crashes when I open large files \u2014 do we have a guide for that, or should I file a ticket?",
+          "expected": "knowledge",
+          "routed_to": "knowledge",
+          "hard": true,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "search_knowledge_articles"
+          ],
+          "latency_s": 16.52,
+          "input_tokens": 6494,
+          "output_tokens": 1297,
+          "requests": 3,
+          "cost_usd": 0.004217
+        },
+        {
+          "query": "I spilled coffee on my keyboard and now half the keys don't work.",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": true,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "get_user_assets",
+            "search_similar_tickets",
+            "create_ticket"
+          ],
+          "latency_s": 33.69,
+          "input_tokens": 14138,
+          "output_tokens": 2891,
+          "requests": 5,
+          "cost_usd": 0.009317
+        },
+        {
+          "query": "New analyst starts Monday and she'll need a MacBook \u2014 can you sort that out?",
+          "expected": "fulfillment",
+          "routed_to": "fulfillment",
+          "hard": true,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_assets",
+            "list_catalog_items",
+            "get_user_profile"
+          ],
+          "latency_s": 12.86,
+          "input_tokens": 15215,
+          "output_tokens": 912,
+          "requests": 5,
+          "cost_usd": 0.005628
+        },
+        {
+          "query": "wifi's been trash all morning, nothing loads, plz fix",
+          "expected": "incident",
+          "routed_to": "incident",
+          "hard": true,
+          "correct": true,
+          "ping_pong": 0,
+          "integrity_ok": true,
+          "tools": [
+            "get_user_profile",
+            "get_user_assets",
+            "search_similar_tickets",
+            "create_ticket"
+          ],
+          "latency_s": 28.61,
+          "input_tokens": 12678,
+          "output_tokens": 2314,
+          "requests": 5,
+          "cost_usd": 0.007797
+        }
+      ],
+      "aggregates": {
+        "accuracy": 1.0,
+        "hard_accuracy": 1.0,
+        "ping_pong_mean": 0.0,
+        "ping_pong_max": 0,
+        "integrity_failures": 0,
+        "multi_intent_ok": true,
+        "confusion": {
+          "knowledge": {
+            "knowledge": 10
+          },
+          "fulfillment": {
+            "fulfillment": 10
+          },
+          "incident": {
+            "incident": 10
+          }
+        },
+        "n": 30
+      },
+      "cost_latency": {
+        "total_cost_usd": 0.195,
+        "cases_with_cost": 30,
+        "total_latency_s": 732.1,
+        "latency_p50_s": 23.78,
+        "latency_p95_s": 33.69
+      },
+      "subset": false,
+      "passed": true
+    },
+    {
+      "suite": "e2e",
+      "rows": [
+        {
+          "flow": "knowledge_cache",
+          "ok": true,
+          "detail": "all checks",
+          "latency_s": 24.38,
+          "cost_usd": null
+        },
+        {
+          "flow": "knowledge_basic",
+          "ok": true,
+          "detail": "all checks",
+          "latency_s": 34.09,
+          "cost_usd": null
+        },
+        {
+          "flow": "refusal",
+          "ok": true,
+          "detail": "all checks",
+          "latency_s": 46.34,
+          "cost_usd": null
+        },
+        {
+          "flow": "refusal",
+          "ok": true,
+          "detail": "all checks",
+          "latency_s": 49.7,
+          "cost_usd": null
+        },
+        {
+          "flow": "order_approve",
+          "ok": true,
+          "detail": "pending -> approve -> submitted/approved (expected submitted/approved)",
+          "latency_s": 24.96,
+          "cost_usd": null
+        },
+        {
+          "flow": "order_reject",
+          "ok": true,
+          "detail": "pending -> reject -> cancelled/rejected (expected cancelled/rejected)",
+          "latency_s": 45.11,
+          "cost_usd": null
+        },
+        {
+          "flow": "order_autoplace",
+          "ok": true,
+          "detail": "all checks",
+          "latency_s": 43.05,
+          "cost_usd": null
+        },
+        {
+          "flow": "order_unorderable",
+          "ok": true,
+          "detail": "no order row created (incompatibility surfaced instead)",
+          "latency_s": 29.43,
+          "cost_usd": null
+        },
+        {
+          "flow": "ticket_update",
+          "ok": true,
+          "detail": "priority high -> high (expected high), status untouched: True",
+          "latency_s": 20.18,
+          "cost_usd": null
+        },
+        {
+          "flow": "incident_link",
+          "ok": true,
+          "detail": "linked to 'Nothing prints from the shared printer', no new ticket",
+          "latency_s": 21.38,
+          "cost_usd": null
+        },
+        {
+          "flow": "incident_link",
+          "ok": true,
+          "detail": "linked to 'Accounts issue: SSO redirect fails', no new ticket",
+          "latency_s": 31.82,
+          "cost_usd": null
+        },
+        {
+          "flow": "incident_create",
+          "ok": true,
+          "detail": "ticket 'MacBook Pro overheating \u2014 fan at full speed and automatic shutdowns' owner=right user (demo.user@corp.com) embedded=yes",
+          "latency_s": 43.12,
+          "cost_usd": null
+        },
+        {
+          "flow": "incident_create",
+          "ok": true,
+          "detail": "ticket 'Desk phone screen dead after power cycle' owner=right user (demo.user@corp.com) embedded=yes",
+          "latency_s": 31.05,
+          "cost_usd": null
+        },
+        {
+          "flow": "incident_create",
+          "ok": true,
+          "detail": "ticket 'Badge reader at 3rd floor entrance rejects badge (beeps three times)' owner=right user (avery.rossi18@corp.com) embedded=yes",
+          "latency_s": 29.16,
+          "cost_usd": null
+        },
+        {
+          "flow": "refusal_to_ticket",
+          "ok": true,
+          "detail": "all checks",
+          "latency_s": 67.08,
+          "cost_usd": null
+        },
+        {
+          "flow": "multi_intent",
+          "ok": true,
+          "detail": "all checks",
+          "latency_s": 37.67,
+          "cost_usd": null
+        },
+        {
+          "flow": "memory_carryover",
+          "ok": true,
+          "detail": "extracted (device_os) 'My work laptop runs Windows 11.'; session B 'used it'",
+          "latency_s": 43.75,
+          "cost_usd": null
+        },
+        {
+          "flow": "chat_restart",
+          "ok": true,
+          "detail": "token 'ZEPHYR-42' recalled across restart",
+          "latency_s": 39.01,
+          "cost_usd": null
+        }
+      ],
+      "aggregates": {
+        "flows_passed": 18,
+        "n": 18
+      },
+      "cost_latency": {
+        "total_cost_usd": null,
+        "cases_with_cost": 0,
+        "total_latency_s": 661.3,
+        "latency_p50_s": 34.09,
+        "latency_p95_s": 49.7
+      },
+      "passed": true
+    },
+    {
+      "suite": "dedup",
+      "rows": [
+        {
+          "report": "Every time I try to log in through SSO it just bounces me straight back to the sign-in page. Can you report this?",
+          "kind": "link",
+          "group": "Accounts issue: SSO redirect fails",
+          "action": "linked",
+          "linked_to": "Accounts issue: SSO redirect fails",
+          "top_similarity": 0.6355,
+          "ok": true,
+          "error": null,
+          "latency_s": 18.3,
+          "input_tokens": 7440,
+          "output_tokens": 1431,
+          "requests": 3,
+          "cost_usd": 0.004722
+        },
+        {
+          "report": "The corporate software update on my machine has been frozen at around 40% since this morning \u2014 please have someone look at it.",
+          "kind": "link",
+          "group": "Software issue: update stuck",
+          "action": "created",
+          "linked_to": null,
+          "top_similarity": 0.6826,
+          "ok": false,
+          "error": null,
+          "latency_s": 23.53,
+          "input_tokens": 9590,
+          "output_tokens": 1700,
+          "requests": 4,
+          "cost_usd": 0.005797
+        },
+        {
+          "report": "The office wifi keeps dropping every few minutes for everyone sitting around me today. Can you report this?",
+          "kind": "link",
+          "group": "Network issue: Wi-Fi keeps dropping",
+          "action": "linked",
+          "linked_to": "Network issue: Wi-Fi keeps dropping",
+          "top_similarity": 0.707,
+          "ok": true,
+          "error": null,
+          "latency_s": 21.64,
+          "input_tokens": 7882,
+          "output_tokens": 1896,
+          "requests": 3,
+          "cost_usd": 0.005763
+        },
+        {
+          "report": "Internal sites won't load for me \u2014 the browser says the server name can't be found, and colleagues nearby have the same problem. Please raise it.",
+          "kind": "link",
+          "group": "['Network issue: DNS not resolving', \"Network issue: can't reach internal site\"]",
+          "action": "linked",
+          "linked_to": "Network issue: can't reach internal site",
+          "top_similarity": 0.6847,
+          "ok": true,
+          "error": null,
+          "latency_s": 29.12,
+          "input_tokens": 8239,
+          "output_tokens": 2009,
+          "requests": 3,
+          "cost_usd": 0.006078
+        },
+        {
+          "report": "The MFA push notification keeps looping forever and never accepts my approval, so I can't finish signing in. Please report it.",
+          "kind": "link",
+          "group": "Accounts issue: MFA prompt loop",
+          "action": "linked",
+          "linked_to": "Accounts issue: MFA prompt loop",
+          "top_similarity": 0.7031,
+          "ok": true,
+          "error": null,
+          "latency_s": 40.01,
+          "input_tokens": 11182,
+          "output_tokens": 2462,
+          "requests": 4,
+          "cost_usd": 0.007719
+        },
+        {
+          "report": "Emails from clients outside the company are not reaching my inbox at all, internal mail works fine. Please raise this with IT.",
+          "kind": "link",
+          "group": "Email issue: not receiving external mail",
+          "action": "created",
+          "linked_to": null,
+          "top_similarity": 0.6918,
+          "ok": false,
+          "error": null,
+          "latency_s": 31.22,
+          "input_tokens": 11018,
+          "output_tokens": 1588,
+          "requests": 4,
+          "cost_usd": 0.005931
+        },
+        {
+          "report": "My wireless mouse eats through a fresh pair of batteries every couple of days \u2014 something must be wrong with it. Please file a ticket.",
+          "kind": "new",
+          "group": "Hardware issue: battery drains fast",
+          "action": "created",
+          "linked_to": null,
+          "top_similarity": 0.5449,
+          "ok": true,
+          "error": null,
+          "latency_s": 15.37,
+          "input_tokens": 10237,
+          "output_tokens": 1465,
+          "requests": 4,
+          "cost_usd": 0.005489
+        },
+        {
+          "report": "The software update finished on my machine but the app now crashes immediately on startup. Please open a ticket.",
+          "kind": "new",
+          "group": "Software issue: update stuck",
+          "action": "created",
+          "linked_to": null,
+          "top_similarity": 0.5488,
+          "ok": true,
+          "error": null,
+          "latency_s": 21.16,
+          "input_tokens": 8283,
+          "output_tokens": 1744,
+          "requests": 3,
+          "cost_usd": 0.005559
+        },
+        {
+          "report": "SSO login itself works, but after signing in I get 'permission denied' when opening the finance dashboard. Please report it.",
+          "kind": "new",
+          "group": "Accounts issue: SSO redirect fails",
+          "action": "created",
+          "linked_to": null,
+          "top_similarity": 0.5688,
+          "ok": true,
+          "error": null,
+          "latency_s": 27.13,
+          "input_tokens": 11437,
+          "output_tokens": 1845,
+          "requests": 4,
+          "cost_usd": 0.006549
+        },
+        {
+          "report": "My USB-C hub's HDMI port stopped outputting video \u2014 the laptop still detects the hub and USB devices work. Please file this.",
+          "kind": "new",
+          "group": "Hardware issue: docking station not detected",
+          "action": "created",
+          "linked_to": null,
+          "top_similarity": 0.6185,
+          "ok": true,
+          "error": null,
+          "latency_s": 17.79,
+          "input_tokens": 10009,
+          "output_tokens": 1410,
+          "requests": 4,
+          "cost_usd": 0.005322
+        },
+        {
+          "report": "Calendar events show up fine on my phone but every reminder fires exactly one hour late. Can you open a ticket?",
+          "kind": "new",
+          "group": "Email issue: calendar not syncing",
+          "action": "created",
+          "linked_to": null,
+          "top_similarity": 0.5476,
+          "ok": true,
+          "error": null,
+          "latency_s": 15.07,
+          "input_tokens": 8140,
+          "output_tokens": 1471,
+          "requests": 3,
+          "cost_usd": 0.004977
+        },
+        {
+          "report": "The shared printer prints fine but every page comes out with a gray streak down the middle. Please report it to IT.",
+          "kind": "new",
+          "group": "Nothing prints from the shared printer",
+          "action": "none",
+          "linked_to": null,
+          "top_similarity": 0.5729,
+          "ok": false,
+          "error": null,
+          "latency_s": 17.98,
+          "input_tokens": 4260,
+          "output_tokens": 1103,
+          "requests": 2,
+          "cost_usd": 0.003271
+        }
+      ],
+      "aggregates": {
+        "link_accuracy": 0.6666666666666666,
+        "trap_accuracy": 0.8333333333333334,
+        "accuracy": 0.75,
+        "n_link": 6,
+        "n_trap": 6
+      },
+      "cost_latency": {
+        "total_cost_usd": 0.0672,
+        "cases_with_cost": 12,
+        "total_latency_s": 278.3,
+        "latency_p50_s": 21.16,
+        "latency_p95_s": 31.22
+      },
+      "passed": true
+    },
+    {
+      "suite": "quality",
+      "judge_model": "gpt-5",
+      "rows": [
+        {
+          "query": "How do I reset my password?",
+          "answer": "Quick steps \u2014 if you can\u2019t log in\n- Go to the company login page and click \u201cForgot Password?\u201d; enter the email for your account and Submit. Check your inbox (or spam) for the \u201cPassword Reset Request\u201d email and click the reset link. Create a new password that meets complexity rules (\u22658 chars, uppercase, lowercase, number, special char) and submit, then log in with the new password. [How to reset your login password]\n\nIf you use Single Sign\u2011On (SSO)\n- Use the password reset portal at passwordreset.companyname.com, enter your SSO email, follow the emailed reset link, set a new password (same complexity requirements), then sign in at sso.companyname.com. If you still have problems, contact the IT Help Desk at helpdesk@companyname.com or ext. 1234. [Password reset for SSO users]\n\nIf your password is expiring (or you can still log in)\n- You can change it from Account Settings \u2192 Change Password by entering your current password and a new one that meets the complexity rules. You\u2019ll receive expiry reminders (30, 15, 7, 1 days before expiry). [Understanding password expiry notifications]\n\nSources:\n- How to reset your login password (3e035404-1689-5439-a402-f65b70c1d0bd)\n- Password reset for SSO users (b68e7598-88b5-540c-a7b3-0cb1c335111a)\n- Understanding password expiry notifications (1adab1e1-efe2-5dc8-921e-11d293ceaab4)\n\nWould you like me to send a password-reset email link for your account or open a ticket with IT?",
+          "faithfulness": 4,
+          "faithfulness_justification": "All procedural details match the sources, but the offer to directly send a reset link or open a ticket is not supported by the provided excerpts.",
+          "helpfulness": 5,
+          "helpfulness_justification": "It gives clear, step-by-step instructions for standard, SSO, and expiring-password scenarios with contact info, enabling the user to complete the reset.",
+          "latency_s": 28.86,
+          "answer_latency_s": 21.43,
+          "input_tokens": 7318,
+          "output_tokens": 1765,
+          "cost_usd": 0.011975,
+          "judge_cost_usd": 0.008269
+        },
+        {
+          "query": "I lost my phone with the authenticator app on it \u2014 how do I get back into my account?",
+          "answer": "First try these steps (from the knowledge base) to regain access:\n\n- Use your backup codes: when you set up the authenticator you should have saved backup codes \u2014 enter one at the MFA prompt to sign in. [Recovering MFA when you lose your phone]  \n- Try alternate MFA methods: look for an option like \u201cuse alternative method\u201d (email, SMS, or security questions) on the MFA prompt and follow the on-screen steps. [Recovering MFA when you lose your phone]  \n- If you don\u2019t have backup codes or alternate methods, contact IT support and submit a ticket. Include your full name, employee ID, a description of the issue, and any backup codes you tried. IT will verify your identity and reset your MFA. [Recovering MFA when you lose your phone]  \n- After IT resets MFA, reconfigure a new authenticator (scan the QR or enter the setup key) and save the new backup codes in a secure place. [Recovering MFA when you lose your phone]  \n- As a precaution, change your account password, review recent account activity for anything suspicious, and report the lost phone to your carrier (consider remote wipe if available). [Recovering MFA when you lose your phone]\n\nWould you like me to open a support ticket for you now? If so, please confirm and provide the full name and employee ID to include in the request.\n\nSources:\nRecovering MFA when you lose your phone (5d66533c-d8d2-58df-aaaf-8685a82fb7d5)",
+          "faithfulness": 4,
+          "faithfulness_justification": "All steps align with the recovery article except for citing SMS as an alternate MFA method, which the source lists as email or security questions, making that a minor unsupported embellishment.",
+          "helpfulness": 5,
+          "helpfulness_justification": "Clear, actionable steps cover all recovery paths (backup codes, alternate methods, IT reset, re-setup, securing account) and offers to open a support ticket, fully enabling the user to regain access.",
+          "latency_s": 20.62,
+          "answer_latency_s": 14.85,
+          "input_tokens": 7340,
+          "output_tokens": 1841,
+          "cost_usd": 0.011294,
+          "judge_cost_usd": 0.007221
+        },
+        {
+          "query": "Walk me through setting up the VPN on my Mac.",
+          "answer": "Follow these steps from the knowledge base to set up a VPN on macOS [VPN setup guide (macOS)]:\n\n1. Prerequisites\n   - Get your VPN server address, username, password, and any shared secret or certificate from IT.\n\n2. Open Network preferences\n   - Apple menu \u2192 System Preferences \u2192 Network.\n\n3. Add a VPN connection\n   - Click the + button (bottom left).\n   - Interface: select VPN.\n   - VPN Type: choose the type your company uses (L2TP, IKEv2, etc.).\n   - Service Name: give it a name (e.g., \"Company VPN\") \u2192 Create.\n\n4. Configure VPN settings\n   - Enter Server Address and Account Name.\n   - Click Authentication Settings and enter password and shared secret or select a certificate as required \u2192 OK.\n\n5. Advanced options (optional)\n   - Click Advanced to enable \"Send all traffic over VPN\" or add DNS servers if IT instructed.\n\n6. Apply and connect\n   - Select the new VPN in the left list \u2192 Apply \u2192 Connect.\n   - Status should change to Connected after a few moments.\n\n7. Verify & disconnect\n   - Verify by checking your IP (e.g., whatismyip.com).\n   - To disconnect: go back to Network preferences, select the VPN, and click Disconnect.\n\nTroubleshooting\n   - Re-check server address, username, and password.\n   - Ensure your internet connection is active.\n   - Contact IT helpdesk if problems persist.\n\nSources:\n- VPN setup guide (macOS) (691e9509-032b-571a-9109-2922b2f3c14c)",
+          "faithfulness": 5,
+          "faithfulness_justification": "All steps and details closely match the macOS VPN setup guide in the sources, with no unsupported claims.",
+          "helpfulness": 5,
+          "helpfulness_justification": "Provides a complete, step-by-step walkthrough with prerequisites, configuration, verification, disconnect, and troubleshooting tailored to macOS.",
+          "latency_s": 24.8,
+          "answer_latency_s": 15.62,
+          "input_tokens": 7444,
+          "output_tokens": 1794,
+          "cost_usd": 0.012494,
+          "judge_cost_usd": 0.008807
+        },
+        {
+          "query": "What is the software reimbursement policy?",
+          "answer": "Key points from the Software Reimbursement Policy [Software Reimbursement Policy]:\n\n- Eligibility\n  - Must be directly related to your job, not available through existing company licenses, and purchased within the current fiscal year. [Software Reimbursement Policy]\n\n- Cost limits and approvals\n  - Purchases up to $500 may be reimbursed without prior approval.\n  - Purchases over $500 require prior written approval from your department head. [Software Reimbursement Policy]\n\n- How to request reimbursement\n  1. Purchase the software with a personal payment method and keep the receipt.  \n  2. Complete the company reimbursement form (available on the intranet) including required fields (name, ID, dept, purchase date, software name, business justification, amount).  \n  3. Attach the receipt and any supporting documentation.  \n  4. Submit the form for manager approval (via the designated process).  \n  5. If approved, the request goes to finance and approved reimbursements are processed in the next payroll cycle. [Software Reimbursement Policy]\n\n- Timeframe and compliance\n  - Requests must be submitted within 30 days of purchase.  \n  - Software must comply with company security and licensing policies. [Software Reimbursement Policy]\n\n- Contacts\n  - For questions, contact IT Support or HR (contact details on the article). [Software Reimbursement Policy]\n\nSources:\nSoftware Reimbursement Policy (29c57aef-0e3b-5b40-8600-f7ec00c07cdd)\n\nWould you like the reimbursement form link or help preparing a submission?",
+          "faithfulness": 4,
+          "faithfulness_justification": "Accurately summarizes eligibility, steps, timing, compliance, contacts, and >$500 approval; slightly infers that \u2264$500 requires no prior approval without being explicitly stated.",
+          "helpfulness": 5,
+          "helpfulness_justification": "Directly answers with clear, actionable summary and steps that fully enable the user to follow the policy.",
+          "latency_s": 20.93,
+          "answer_latency_s": 10.9,
+          "input_tokens": 6349,
+          "output_tokens": 1231,
+          "cost_usd": 0.010178,
+          "judge_cost_usd": 0.007661
+        },
+        {
+          "query": "What's new in AstraCore v5.2 compared to v5.1?",
+          "answer": "I checked the release notes for both versions. Summary of what\u2019s new in AstraCore v5.2 vs v5.1:\n\n- Reporting: v5.2 adds customizable report templates and new visualization types (pie charts, line graphs). v5.1 introduced a comprehensive reporting module with multi-format export (PDF/Excel/CSV) [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- API: v5.2 introduces AstraCore API v2.0 with new endpoints for third\u2011party integrations and adds OAuth 2.0 support for API access. v5.1 added support for specific third\u2011party integrations (Salesforce, HubSpot) and improved API documentation [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- Performance and resource usage: both note a ~30% improvement in data retrieval from optimized DB queries. v5.1 explicitly reported a 15% reduction in background memory usage; v5.2 also states reduced memory usage in background services but does not give a percent [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- UI/accessibility: both releases list dashboard/UI improvements and accessibility updates (ADA) \u2014 no major UI feature listed as unique to v5.2 in the notes [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- Bug fixes / stability: v5.2 specifically fixes slow loading on the analytics page and synchronization problems with external data sources. v5.1 focused on resolving intermittent login failures, notification delays, and data sync errors [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- Upgrade guidance and known issues: v5.2 includes upgrade steps and lists minor known UI glitches in some browsers and potential third\u2011party compatibility updates; v5.1 noted API rate limiting during peak hours and some mobile UI compatibility issues [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].\n\nSources:\n- AstraCore v5.2 release notes (2b66711b-9535-5c42-b9cf-01694607024d)  \n- AstraCore v5.1 release notes (58d96b3b-de9a-5e9f-aa29-b8ba1d17d76e)\n\nIf you want, I can provide the exact upgrade steps from the v5.2 notes or check whether any of your installed third\u2011party integrations need updates.",
+          "faithfulness": 5,
+          "faithfulness_justification": "All summarized differences (reporting, API, performance, UI/accessibility, bug fixes, upgrade notes, known issues) are directly supported by the provided v5.1 and v5.2 release notes.",
+          "helpfulness": 5,
+          "helpfulness_justification": "Clear, concise comparison of v5.2 vs v5.1 across key areas fully answers the question and is immediately actionable for understanding what\u2019s new.",
+          "latency_s": 26.2,
+          "answer_latency_s": 18.74,
+          "input_tokens": 6852,
+          "output_tokens": 2235,
+          "cost_usd": 0.014028,
+          "judge_cost_usd": 0.009806
+        },
+        {
+          "query": "How do I report a phishing email I received?",
+          "answer": "Follow these steps:\n\n1. Do NOT click links or open attachments in the suspicious message.  \n2. Look for phishing signs (bad grammar, urgent requests, unfamiliar sender, generic greeting).  \n3. Take a screenshot that shows the email header and body.  \n4. Forward the email to the IT security team at security@yourcompany.com. In the forward, say why you think it\u2019s phishing and note any actions you already took (e.g., clicked a link).  \n5. After forwarding, delete the message from your mailbox.  \n6. If you clicked a link or opened an attachment, run a full antivirus scan immediately and follow the scan\u2019s recommendations.  \n7. If you gave away credentials or other sensitive info, change your password right away.  \n8. For severe cases (financial loss or identity theft), consider reporting to external authorities such as the FTC.  \n9. If you\u2019re unsure or need help, contact the IT security team.\n\n[Reporting a phishing email]\n\nSources: Reporting a phishing email (4603725b-3299-57dd-8c1a-257052964a02)",
+          "faithfulness": 5,
+          "faithfulness_justification": "All steps and details in the answer match the source guidance (forward to security@yourcompany.com, include rationale and actions taken, screenshot, delete, AV scan, password change if info given, external reporting like FTC, contact IT).",
+          "helpfulness": 5,
+          "helpfulness_justification": "Direct, step-by-step instructions clearly tell the user exactly how to report the phishing email and what follow-up actions to take if they interacted with it.",
+          "latency_s": 17.22,
+          "answer_latency_s": 10.77,
+          "input_tokens": 7102,
+          "output_tokens": 1209,
+          "cost_usd": 0.009715,
+          "judge_cost_usd": 0.006902
+        },
+        {
+          "query": "How do I set an out of office reply?",
+          "answer": "Which email client do you use? Meanwhile, here are quick steps for common clients:\n\n- Outlook (desktop): File \u2192 Automatic Replies (Out of Office) \u2192 select \"Send automatic replies\" (optionally set a time range) \u2192 enter internal and external messages \u2192 OK. [Setting an out-of-office auto-reply]\n\n- Outlook (web): Sign in \u2192 Settings (gear) \u2192 View all Outlook settings \u2192 Mail \u2192 Automatic replies \u2192 toggle on, set time range if needed, compose internal/external messages \u2192 Save. [Setting an out-of-office auto-reply]\n\n- Gmail: Sign in \u2192 Settings (gear) \u2192 See all settings \u2192 General tab \u2192 Out of Office AutoReply \u2192 turn on, set first/last day and message (option to send only to contacts) \u2192 Save Changes. [Setting an out-of-office auto-reply]\n\nRemember to turn the auto-reply off when you return.  \n\nSources: Setting an out-of-office auto-reply (06d19721-5376-54d0-a2e7-80112108a985)",
+          "faithfulness": 5,
+          "faithfulness_justification": "All steps and notes match the provided out-of-office setup instructions for Outlook (desktop/web) and Gmail, including the reminder to turn it off.",
+          "helpfulness": 5,
+          "helpfulness_justification": "Direct, actionable steps for major clients answer the question immediately, with a prompt to specify the client if different.",
+          "latency_s": 13.93,
+          "answer_latency_s": 7.77,
+          "input_tokens": 7603,
+          "output_tokens": 1159,
+          "cost_usd": 0.010823,
+          "judge_cost_usd": 0.008256
+        },
+        {
+          "query": "How do I add a network printer?",
+          "answer": "Follow these steps (Windows) to add a network printer:\n\nPrerequisites\n- Make sure the printer is powered on and connected to the network, and get its IP address. Have admin access on your workstation. [Adding a network printer]\n\nSteps\n1. Open Control Panel (Windows+R \u2192 type control \u2192 Enter) and go to Devices and Printers. [Adding a network printer]  \n2. Click Add a printer. If Windows finds the printer in the list, select it and click Next. [Adding a network printer]  \n3. If it isn\u2019t listed, choose The printer that I want isn't listed \u2192 Add a printer using a TCP/IP address or hostname. [Adding a network printer]  \n4. Select Device type = TCP/IP Device, enter the printer\u2019s IP address, and click Next. Uncheck \u201cQuery the printer and automatically select the driver to use\u201d if prompted. [Adding a network printer]  \n5. Install the printer driver (select from the list or use Have Disk to point to a downloaded driver). [Adding a network printer]  \n6. Name the printer, choose whether to set it as default, click Next, then Finish. Print a test page to confirm. [Adding a network printer]  \n7. Verify the printer appears under Devices and Printers and review Printer properties as needed. [Adding a network printer]\n\nQuick troubleshooting if it won\u2019t add or print\n- Verify the printer\u2019s network connection and IP is correct.  \n- Check firewall/security software isn\u2019t blocking the printer.  \n- Restart the printer and your PC.  \n- Update or reinstall the printer driver from the manufacturer\u2019s site. [Printer not printing: basic troubleshooting]\n\nSources:\n- Adding a network printer (1f655684-f480-5568-8501-2ddfe150a3a6)  \n- Printer not printing: basic troubleshooting (ad317b1e-d2d8-5ce2-8a24-61291d045de2)\n\nIf you tell me your OS version (e.g., Windows 10, Windows 11, or macOS) I can give steps specific to that system.",
+          "faithfulness": 5,
+          "faithfulness_justification": "All steps and troubleshooting tips match the provided sources, including prerequisites, Control Panel workflow, TCP/IP method, driver installation, and firewall/driver/restart checks.",
+          "helpfulness": 4,
+          "helpfulness_justification": "Clear, step-by-step Windows instructions with troubleshooting are actionable, but it only covers Windows; users on other OSes would need a follow-up for platform-specific steps.",
+          "latency_s": 21.61,
+          "answer_latency_s": 12.9,
+          "input_tokens": 6702,
+          "output_tokens": 1563,
+          "cost_usd": 0.011474,
+          "judge_cost_usd": 0.00834
+        },
+        {
+          "query": "Are we allowed to use AI tools like ChatGPT for work tasks?",
+          "answer": "Short answer: Yes \u2014 but only under the rules in our AI policy.\n\nKey points from the Acceptable Use of AI Tools Policy:\n- Get authorization first: use only AI tools that are pre\u2011approved by your manager or IT.  \n- Use only vetted/sanctioned tools; do not use unapproved SaaS/AI services.  \n- Do NOT enter sensitive or confidential data into AI tools unless you have explicit authorization.  \n- Follow legal/compliance requirements (GDPR/CCPA etc.) and consult Legal if unsure.  \n- Review AI-generated content for accuracy and IP issues before sharing or using it.  \n- Keep tools updated, report security incidents, complete required training, and expect monitoring; violations can lead to disciplinary action. [Acceptable Use of AI Tools Policy]\n\nIf you want to use a specific tool (e.g., ChatGPT), I can help start an approval request or check whether it\u2019s already sanctioned \u2014 would you like me to do that?\n\nSources:\nAcceptable Use of AI Tools Policy (130fb1d5-c526-5bf6-b8c9-d097935bf426)",
+          "faithfulness": 5,
+          "faithfulness_justification": "All points in the answer align with and are supported by the Acceptable Use of AI Tools Policy in the sources (authorization, vetted tools, data privacy, compliance, review, IP, security, training, monitoring, and consequences).",
+          "helpfulness": 5,
+          "helpfulness_justification": "Directly answers \u2018yes, with conditions,\u2019 concisely lists the applicable rules, and offers next-step assistance to check or initiate approval for specific tools.",
+          "latency_s": 26.72,
+          "answer_latency_s": 17.0,
+          "input_tokens": 15000,
+          "output_tokens": 1910,
+          "cost_usd": 0.017204,
+          "judge_cost_usd": 0.012042
+        },
+        {
+          "query": "What do I need to do for IT setup on my first day?",
+          "answer": "Short checklist for your first-day IT setup:\n\n- Before start: make sure a new-user account request is submitted with your full name, job title, department, start date, preferred email, required access level, and any special software needs. [Requesting a New User Account]  \n- Approvals: the request needs manager (and HR, if required) approval before IT creates the account. [Requesting a New User Account]  \n- Submission & tracking: the request is submitted through the IT portal; you or your manager can monitor its status via the helpdesk ticketing system. [Requesting a New User Account]  \n- After account creation: you\u2019ll receive your username, a temporary password, and first-login instructions. Schedule a short session with IT to assist with the initial login. [Requesting a New User Account]  \n- First-day setup tasks with IT: set your permanent password, confirm access to email and critical applications, and have required software installed or granted. [Requesting a New User Account]  \n- If anything fails or you have questions, contact the IT helpdesk for ongoing support. [Requesting a New User Account]\n\nSources: Requesting a New User Account (fdc317dc-f5e5-57b4-bf72-3fa985772aa3)",
+          "faithfulness": 3,
+          "faithfulness_justification": "Most points map to the sources, but claims about the manager being able to track the ticket, setting a permanent password, and getting required software installed are not explicitly supported.",
+          "helpfulness": 4,
+          "helpfulness_justification": "Clear, concise checklist that largely answers first-day setup needs with actionable steps, though it omits some details and includes minor assumptions.",
+          "latency_s": 28.34,
+          "answer_latency_s": 11.21,
+          "input_tokens": 6520,
+          "output_tokens": 2292,
+          "cost_usd": 0.017633,
+          "judge_cost_usd": 0.014273
+        }
+      ],
+      "aggregates": {
+        "faithfulness_mean": 4.5,
+        "faithfulness_distribution": {
+          "1": 0,
+          "2": 0,
+          "3": 1,
+          "4": 3,
+          "5": 6
+        },
+        "helpfulness_mean": 4.8,
+        "helpfulness_distribution": {
+          "1": 0,
+          "2": 0,
+          "3": 0,
+          "4": 2,
+          "5": 8
+        },
+        "n": 10
+      },
+      "cost_latency": {
+        "total_cost_usd": 0.1268,
+        "cases_with_cost": 10,
+        "total_latency_s": 229.2,
+        "latency_p50_s": 21.61,
+        "latency_p95_s": 28.86
+      },
+      "passed": true
+    }
+  ]
+}

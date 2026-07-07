@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     triage_model: str = "gpt-5-mini"
     specialist_model: str = "gpt-5-mini"
     embedding_model: str = "text-embedding-3-small"  # must produce EMBED_DIM=1536 vectors
+    # Eval judge (M5, ADR-033): deliberately STRONGER than the models it judges — gpt-5-mini
+    # scoring its own outputs is a known self-preference bias. gpt-5 is the same-generation
+    # full-size sibling of the pinned workhorse (verified served, account model list
+    # 2026-07-07); same OPENAI_API_KEY, no new credentials.
+    judge_model: str = "gpt-5"
 
     # --- retrieval knobs (ADR-011 / ADR-016; tuned against `make eval`, not vibes) ---
     retrieval_top_k: int = 5
@@ -60,6 +65,7 @@ class Settings(BaseSettings):
         "triage_model",
         "specialist_model",
         "embedding_model",
+        "judge_model",
         "hitl_approval_threshold_usd",
         "retrieval_refusal_threshold",
         mode="before",

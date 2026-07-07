@@ -26,4 +26,6 @@ htmlcov/
 # Data & artifacts
 *.db
 data/generated/
-evals/results/
+# transient eval outputs stay local, but the committed baseline (ADR-034) is tracked
+evals/results/*
+!evals/results/baseline.json

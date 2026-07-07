@@ -3,26 +3,30 @@
 #
 # Philosophy (ADR-026): floors are REGRESSION gates, not perfection gates. Each floor sits
 # BELOW its measured baseline by more than observed run-to-run variance, so green means
-# "nothing broke" and red always means a real regression — never eval noise. Loosening a floor
-# to match an older plan (the original M4 sketch said 0.75/0.85) would be backwards: the
-# baselines are measured at 1.0, so the enforced 0.8/0.9 already ARE the regression margins.
+# "nothing broke" and red always means a real regression — never eval noise. Never loosen an
+# enforced floor: the M5 re-derivation (ADR-034) treated the 2026-07-07 post-recalibration
+# values as hard lower bounds and found no floor whose baseline justified moving it either way.
 #
-# Baselines (2026-07-07, gpt-5-mini + text-embedding-3-small — floors are only meaningful
-# against the models that produced them; re-measure before changing models):
-#   retrieval  recall@5 1.000 · MRR 0.980 · refusals 4–5/5 (one gate-edge probe flips) · false refusals 0
-#   routing    accuracy 1.000 (hard 6/6) · ping-pong 0 · integrity failures 0
-#   dedup      final dataset 12/12; runs during dataset finalization 9–10/12 with two probes
-#              observed flipping run-to-run (gray-band judgment is genuinely variable, ADR-028)
+# Baselines (2026-07-07 M5 full runs, gpt-5-mini + text-embedding-3-small + judge gpt-5 —
+# floors are only meaningful against the models that produced them; re-measure before
+# changing models). Committed run: evals/results/baseline.json (per-case cost + latency).
+#   retrieval  recall@5 1.000 · MRR 0.983 · refusals 8–10/10 across four same-day runs ·
+#              false refusals 0
+#   routing    accuracy 1.000 (hard 6/6) · ping-pong 0 · integrity 0–1 (the ~1/30 ADR-022 burp)
+#   e2e        18 flows; 16/18 on the first run (two harness-design bugs, fixed — ADR-032),
+#              then 18/18 on the committed baseline run
+#   dedup      10/12 and 9/12 on the M5 runs; historical range 8–12/12 (ADR-028: gray-band
+#              judgment is genuinely variable)
+#   quality    faithfulness 4.7 / 4.1 / 4.5 · helpfulness 4.9 / 4.4 / 4.8 across three
+#              same-day runs — exactly the variance that keeps it report-only (below)
 
 [retrieval]
 recall_at_5 = 0.8
-# "install the company whiteboard app" sits 0.002 below the 0.45 stage-1 gate (top_cos 0.448),
-# so its refusal hinges on whether the agent's LLM-generated query EXPANSIONS cross the gate —
-# observed both ways on identical code (2026-07-07: refused locally and in both nightlies,
-# answered in two consecutive PR CI runs). That's the ADR-017 near-miss band doing exactly what
-# it does; a 1.0 floor over 5 binary cases turns one coin-flip probe into CI red. 0.8 tolerates
-# one borderline miss; 2+ misses is contract/gate drift. Keep the probe — it's the only case
-# exercising the band edge. TODO(M5): expand the refusal slice so this is a real rate.
+# M5 grew the refusal slice 5 -> 10, so this is finally a RATE, not five coin flips (the M4
+# addendum's promise). Observed across three same-day agent-mode runs: 10/10, 8/10, 9/10 —
+# the misses are gray-band probes ("whiteboard app" at 0.448 vs the 0.45 gate; "3D printer"
+# at 0.453) whose refusal hinges on stage-2 judgment, exactly the ADR-017 band working.
+# 0.8 tolerates the observed worst run; 3+ misses is contract/gate drift and stays red.
 refusal_accuracy = 0.8
 false_refusals_max = 0
 
@@ -30,21 +34,32 @@ false_refusals_max = 0
 accuracy = 0.9
 # ADR-022 documents a residual "empty final message inside a specialist's turn" burp and
 # observed it at ~1/30 pre-fix; the first nightly full-30 run (2026-07-07) observed it once
-# post-fix too (routing was otherwise perfect: accuracy 1.000, ping-pong 0). A zero floor on
-# a known ~1/30 burp is a perfection gate — 1 is tolerance for the burp, 2+ is systematic.
+# post-fix too (routing was otherwise perfect: accuracy 1.000, ping-pong 0), and the M5
+# subset run saw it once more. A zero floor on a known ~1/30 burp is a perfection gate —
+# 1 is tolerance for the burp, 2+ is systematic.
 integrity_failures_max = 1
 
 [e2e]
-# Every flow is a product contract (order HITL, dedup link/create, citations, cache serve);
-# one broken flow is a broken product, so the floor is all-of-them.
+# Every flow is a product contract (order HITL both halves, dedup link/create, citations,
+# cache serve, memory carryover, restart survival); one broken flow is a broken product, so
+# the floor is all-of-them — now over 18 flows (M5) instead of 6. The two failures on the
+# first 18-flow run were harness-design bugs (stage-2 refusal citations; missing nudge turn),
+# fixed in the flows per the ADR-027-addendum discipline, not by lowering this floor.
 flow_pass_rate = 1.0
 
 [dedup]
 # Gray-band (0.60-0.80 cosine) judgment accuracy over 6 link probes + 6 traps. Observed range
 # across the first four full runs (2026-07-07, same code): 8/12, ~9/12, ~10/12, 12/12 — the
-# gray band is genuinely variable, which is the ADR-028 finding, not noise to hide. 0.65 sits
-# one flip below the worst observed run (8/12 = 0.667 passes; 7/12 = 0.583 fails), so red
-# means judgment collapsed, while the nightly REPORT tracks the actual accuracy trend for the
-# deferred cross-encoder decision. (First floor, 0.75, was set from 3 runs and tripped on the
-# first nightly at 8/12 — recalibrated per ADR-026's own rule: below OBSERVED variance.)
+# gray band is genuinely variable, which is the ADR-028 finding, not noise to hide. The M5
+# baseline runs landed inside that range (10/12), so the floor stands. 0.65 sits one flip
+# below the worst observed run (8/12 = 0.667 passes; 7/12 = 0.583 fails), so red means
+# judgment collapsed, while the nightly REPORT tracks the actual accuracy trend for the
+# deferred cross-encoder decision.
 accuracy = 0.65
+
+# [quality] — deliberately ABSENT (report-only), per ADR-026's own rule: a floor needs a
+# baseline plus observed run-to-run variance, and the first three same-day runs already moved
+# 0.6 on faithfulness mean (4.7 -> 4.1 -> 4.5) on identical code — judge-and-agent variance,
+# not regression. The suite reports mean + distribution in every nightly; once several
+# nightlies show what normal looks like, add e.g. `faithfulness_mean = ...` /
+# `helpfulness_mean = ...` here and suite_quality.py gates on them with no code change.

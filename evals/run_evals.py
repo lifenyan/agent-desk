@@ -1,23 +1,27 @@
-"""Eval harness CLI: run the full suite (retrieval, routing, e2e, dedup) or --subset for CI.
+"""Eval harness CLI: run the full suite (retrieval, routing, e2e, dedup, quality) or --subset.
 
 M1 implemented the retrieval suite, M2 routing; M4 plugged e2e (evals/suite_e2e.py) and dedup
 (evals/suite_dedup.py) into the SUITES registry, moved the pass/fail floors into
 evals/thresholds.toml (single source of truth, ADR-026 — floors are REGRESSION gates set
 below observed variance, not perfection gates), and added:
 - `--subset`: the deterministic cost-capped PR gate (ADR-026) = the FULL retrieval suite
-  (~5 LLM calls — the answerable slice is LLM-free) + the 10 routing cases flagged
+  (~10 LLM calls — the answerable slice is LLM-free; M5 grew the refusal slice 5→10 so the
+  refusal metric is a rate, not five coin flips) + the 10 routing cases flagged
   `"subset": true` in routing.jsonl (all 6 hard cases — they exist because they caught real
-  bugs — plus one easy case per specialist and the ticket-update path). e2e and dedup are
-  nightly-only. No random sampling: CI runs must be comparable run-to-run.
+  bugs — plus one easy case per specialist and the ticket-update path). e2e, dedup, and
+  quality are nightly-only. No random sampling: CI runs must be comparable run-to-run.
 - a GitHub job-summary writer: when $GITHUB_STEP_SUMMARY is set (any Actions run), the
   per-suite metrics tables are appended there as markdown.
+M5 added the quality suite (evals/suite_quality.py, LLM-as-judge — ADR-033), per-case
+cost/latency on every suite (--out writes the full JSON; evals/results/baseline.json is a
+committed run — ADR-034), and the routing wrong-handoff matrix.
 
 Scoring mirrors the two-stage refusal cascade (ADR-017):
 - ANSWERABLE cases run DIRECTLY against rag.hybrid_search — no LLM in the loop (the only
   network call is embedding each query, cached after the first run): recall@5 + MRR at the
   article level, plus a false-refusal flag (would the deterministic stage-1 gate have wrongly
   suppressed the answer?).
-- REFUSAL cases run through the knowledge agent (5 small LLM calls per run), because near-miss
+- REFUSAL cases run through the knowledge agent (10 small LLM calls per run), because near-miss
   negative space ('email on smartwatch' vs the email-on-phone article) is measurably
   inseparable at the retrieval level — the agent reading the chunks IS the refusal mechanism
   under test. Detection is structural, keyed to the agent's output contract: a refusal offers
@@ -38,14 +42,18 @@ only now exists) runs every case through the ROUTER with real tools against the 
 Use `--suite retrieval` alone for the cheap (LLM-free answerable path) tuning loop.
 """
 # Retrieval suite implemented in M1; routing in M2; e2e + dedup + --subset + thresholds.toml
-# + job summary in M4.
+# + job summary in M4; quality + cost/latency + confusion matrix + --out in M5.
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import datetime
+import json
 import os
 import sys
+import time
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -61,10 +69,18 @@ from app.config import get_settings  # noqa: E402
 from app.db.database import SessionLocal  # noqa: E402
 from app.db.models import Order, Ticket, TicketComment  # noqa: E402
 from app.rag.hybrid_search import hybrid_search, top_cosine  # noqa: E402
-from evals.common import DATASET_DIR, EVAL_USER, FLOORS, load_jsonl as _load_jsonl  # noqa: E402
+from evals.common import (  # noqa: E402
+    DATASET_DIR,
+    EVAL_USER,
+    FLOORS,
+    cost_latency_aggregates,
+    load_jsonl as _load_jsonl,
+    usage_fields,
+)
 from evals.metrics import dedupe_preserving_order, mrr, recall_at_k  # noqa: E402
 from evals.suite_dedup import run_dedup  # noqa: E402
 from evals.suite_e2e import run_e2e  # noqa: E402
+from evals.suite_quality import run_quality  # noqa: E402
 
 # Floors come from evals/thresholds.toml (ADR-026) — regression gates below observed variance.
 RECALL_AT_5_FLOOR = FLOORS["retrieval"]["recall_at_5"]
@@ -80,10 +96,10 @@ def _agent_refused(answer: str) -> bool:
     return "Sources:" not in answer and "ticket" in answer.lower()
 
 
-async def _run_refusal_case(query: str) -> tuple[bool, str]:
+async def _run_refusal_case(query: str) -> tuple[bool, str, dict]:
     result = await Runner.run(knowledge_agent, query, context=ChatContext())
     answer = str(result.final_output)
-    return _agent_refused(answer), answer
+    return _agent_refused(answer), answer, usage_fields(result, get_settings().specialist_model)
 
 
 def run_retrieval(
@@ -102,13 +118,16 @@ def run_retrieval(
     rows = []
     with SessionLocal() as session:
         for case in cases:
+            t0 = time.perf_counter()
             results = hybrid_search(session, case["query"], top_k=k)
             article_ids = dedupe_preserving_order([str(r.article_id) for r in results])
             best = top_cosine(results)
             gate_refuses = best < threshold
             if case.get("refusal"):
+                # LLM-free by default: cost fields only exist on the agent-mode path.
+                usage = {"cost_usd": None}
                 if refusal_mode == "agent":
-                    refused, _ = asyncio.run(_run_refusal_case(case["query"]))
+                    refused, _, usage = asyncio.run(_run_refusal_case(case["query"]))
                 else:
                     refused = gate_refuses
                 rows.append(
@@ -119,6 +138,8 @@ def run_retrieval(
                         "mrr": None,
                         "top_cosine": best,
                         "pass": refused,
+                        "latency_s": round(time.perf_counter() - t0, 2),
+                        **usage,
                     }
                 )
             else:
@@ -135,6 +156,10 @@ def run_retrieval(
                         # useless if the deterministic gate would have suppressed the answer
                         "pass": recall == 1.0 and not gate_refuses,
                         "false_refusal": gate_refuses,
+                        # LLM-free: only the (cached-after-first-run) query embedding bills,
+                        # far below a rounding digit — latency is the honest number here.
+                        "latency_s": round(time.perf_counter() - t0, 2),
+                        "cost_usd": None,
                     }
                 )
 
@@ -157,6 +182,7 @@ def run_retrieval(
             "n_refusal": len(refusals),
         },
     }
+    report["cost_latency"] = cost_latency_aggregates(rows)
     report["passed"] = (
         report["aggregates"]["recall_at_k"] >= RECALL_AT_5_FLOOR
         and report["aggregates"]["refusal_accuracy"] >= REFUSAL_ACCURACY_FLOOR
@@ -184,6 +210,7 @@ def _run_trace(result) -> tuple[list[str], list[str]]:
 
 
 async def _routing_case(case: dict) -> dict:
+    t0 = time.perf_counter()
     try:
         result = await Runner.run(
             router_agent, case["query"], context=ChatContext(user_id=EVAL_USER)
@@ -198,6 +225,8 @@ async def _routing_case(case: dict) -> dict:
             "ping_pong": 0,
             "integrity_ok": False,
             "tools": [],
+            "latency_s": round(time.perf_counter() - t0, 2),
+            "cost_usd": None,
         }
     handoffs, tools = _run_trace(result)
     return {
@@ -211,6 +240,8 @@ async def _routing_case(case: dict) -> dict:
         # the ADR-018 non-answer: no handoff, or zero tool calls, or an empty final output
         "integrity_ok": bool(handoffs) and bool(tools) and bool(str(result.final_output).strip()),
         "tools": tools,
+        "latency_s": round(time.perf_counter() - t0, 2),
+        **usage_fields(result, get_settings().specialist_model),
     }
 
 
@@ -255,6 +286,16 @@ def run_routing(subset: bool = False, **_ignored) -> dict:
     hard = [r for r in rows if r["hard"]]
     multi = [r for r in rows if "multi_intent_ok" in r]
     ping = [r["ping_pong"] for r in rows]
+
+    # Wrong-handoff matrix (M5): expected specialist -> where runs actually went, counted over
+    # every case. The accuracy number says HOW OFTEN routing fails; this says WHERE it leaks —
+    # the input for fixing router instructions (a systematic knowledge->incident drift reads
+    # very differently from scattered one-offs).
+    confusion: dict[str, dict[str, int]] = {}
+    for r in rows:
+        row = confusion.setdefault(r["expected"], {})
+        row[r["routed_to"]] = row.get(r["routed_to"], 0) + 1
+
     report = {
         "suite": "routing",
         "rows": rows,
@@ -265,9 +306,11 @@ def run_routing(subset: bool = False, **_ignored) -> dict:
             "ping_pong_max": max(ping),
             "integrity_failures": sum(1 for r in rows if not r["integrity_ok"]),
             "multi_intent_ok": all(r["multi_intent_ok"] for r in multi) if multi else None,
+            "confusion": confusion,
             "n": len(rows),
         },
     }
+    report["cost_latency"] = cost_latency_aggregates(rows)
     agg = report["aggregates"]
     report["subset"] = subset
     report["passed"] = (
@@ -278,10 +321,44 @@ def run_routing(subset: bool = False, **_ignored) -> dict:
     return report
 
 
-# e2e (side-effect assertions through the live HTTP API, ADR-027) and dedup (the ADR-021
-# gray-band judgment eval, ADR-028) live in their own modules; both are nightly-only suites.
-SUITES = {"retrieval": run_retrieval, "routing": run_routing, "e2e": run_e2e, "dedup": run_dedup}
-SUBSET_SUITES = ("retrieval", "routing")  # the PR gate: e2e + dedup stay nightly (ADR-026)
+# e2e (side-effect assertions through the live HTTP API, ADR-027), dedup (the ADR-021
+# gray-band judgment eval, ADR-028), and quality (LLM-as-judge, ADR-033) live in their own
+# modules; all three are nightly-only suites.
+SUITES = {
+    "retrieval": run_retrieval,
+    "routing": run_routing,
+    "e2e": run_e2e,
+    "dedup": run_dedup,
+    "quality": run_quality,
+}
+SUBSET_SUITES = ("retrieval", "routing")  # the PR gate: the rest stay nightly (ADR-026)
+
+
+def _print_cost_latency(report: dict) -> None:
+    """One line per suite: what it cost and how long cases took (M5; totals + p50/p95)."""
+    cl = report.get("cost_latency")
+    if not cl or cl["total_latency_s"] is None:
+        return
+    cost = (
+        f"${cl['total_cost_usd']:.4f} over {cl['cases_with_cost']} billed cases"
+        if cl["total_cost_usd"] is not None
+        else "n/a (no SDK usage on this path)"
+    )
+    print(
+        f"cost: {cost} | case latency p50/p95: {cl['latency_p50_s']}s/{cl['latency_p95_s']}s | "
+        f"case wall time total: {cl['total_latency_s']}s"
+    )
+
+
+def _print_confusion(confusion: dict[str, dict[str, int]]) -> None:
+    """Wrong-handoff matrix: rows = expected specialist, columns = where runs actually went."""
+    targets = sorted({t for row in confusion.values() for t in row})
+    print("wrong-handoff matrix (expected \\ routed to):")
+    header = f"{'':<14}" + "".join(f"{t:>14}" for t in targets)
+    print(header)
+    for expected in sorted(confusion):
+        cells = "".join(f"{confusion[expected].get(t, 0):>14}" for t in targets)
+        print(f"{expected:<14}{cells}")
 
 
 def _print_retrieval_report(report: dict) -> None:
@@ -311,6 +388,7 @@ def _print_retrieval_report(report: dict) -> None:
         f"false refusals: {agg['false_refusals']} | "
         f"suite: {'PASS' if report['passed'] else 'FAIL'}"
     )
+    _print_cost_latency(report)
 
 
 def _print_routing_report(report: dict) -> None:
@@ -338,6 +416,8 @@ def _print_routing_report(report: dict) -> None:
         f"multi-intent: {agg['multi_intent_ok']} | "
         f"suite: {'PASS' if report['passed'] else 'FAIL'}"
     )
+    _print_confusion(agg["confusion"])
+    _print_cost_latency(report)
 
 
 def _print_e2e_report(report: dict) -> None:
@@ -354,6 +434,7 @@ def _print_e2e_report(report: dict) -> None:
         f"(floor {FLOORS['e2e']['flow_pass_rate']:.2f} pass rate) | "
         f"suite: {'PASS' if report['passed'] else 'FAIL'}"
     )
+    _print_cost_latency(report)
 
 
 def _print_dedup_report(report: dict) -> None:
@@ -377,6 +458,34 @@ def _print_dedup_report(report: dict) -> None:
         f"overall: {agg['accuracy']:.3f} (floor {FLOORS['dedup']['accuracy']}) | "
         f"suite: {'PASS' if report['passed'] else 'FAIL'}"
     )
+    _print_cost_latency(report)
+
+
+def _print_quality_report(report: dict) -> None:
+    print(f"\n=== quality suite (LLM-as-judge: {report['judge_model']}, ADR-033) ===")
+    header = f"{'query':<52} {'faith':>5} {'help':>5}  weakest justification"
+    print(header)
+    print("-" * 110)
+    for r in report["rows"]:
+        # Show the justification for whichever dimension scored lower — that's the one a
+        # reader triaging a red nightly wants first.
+        just = (
+            r["faithfulness_justification"]
+            if r["faithfulness"] <= r["helpfulness"]
+            else r["helpfulness_justification"]
+        )
+        print(f"{r['query'][:52]:<52} {r['faithfulness']:>5} {r['helpfulness']:>5}  {just[:44]}")
+    agg = report["aggregates"]
+    print("-" * 110)
+    floors_note = "report-only, no floor yet (ADR-026: floors need a baseline + variance)"
+    if FLOORS.get("quality"):
+        floors_note = f"floors: {FLOORS['quality']}"
+    print(
+        f"faithfulness mean: {agg['faithfulness_mean']} {agg['faithfulness_distribution']} | "
+        f"helpfulness mean: {agg['helpfulness_mean']} {agg['helpfulness_distribution']} | "
+        f"{floors_note} | suite: {'PASS' if report['passed'] else 'FAIL'}"
+    )
+    _print_cost_latency(report)
 
 
 _PRINTERS = {
@@ -384,6 +493,7 @@ _PRINTERS = {
     "routing": _print_routing_report,
     "e2e": _print_e2e_report,
     "dedup": _print_dedup_report,
+    "quality": _print_quality_report,
 }
 
 
@@ -448,7 +558,41 @@ def _summary_rows(report: dict) -> list[tuple[str, str, str, str]]:
             ("dedup", "link accuracy", link, "—"),
             ("dedup", "trap accuracy", trap, "—"),
         ]
+    if report["suite"] == "quality":
+        floors = FLOORS.get("quality", {})
+        return [
+            (
+                "quality",
+                "faithfulness mean (1–5)",
+                f"{agg['faithfulness_mean']}",
+                f"≥ {floors['faithfulness_mean']}"
+                if "faithfulness_mean" in floors
+                else "report-only",
+            ),
+            (
+                "quality",
+                "helpfulness mean (1–5)",
+                f"{agg['helpfulness_mean']}",
+                f"≥ {floors['helpfulness_mean']}"
+                if "helpfulness_mean" in floors
+                else "report-only",
+            ),
+        ]
     return []
+
+
+def _cost_summary_row(report: dict) -> tuple[str, str, str, str] | None:
+    """Cost/latency line for the markdown summary (M5) — the M6 Langfuse cross-check number."""
+    cl = report.get("cost_latency")
+    if not cl or cl["total_latency_s"] is None:
+        return None
+    cost = f"${cl['total_cost_usd']:.4f}" if cl["total_cost_usd"] is not None else "n/a"
+    return (
+        report["suite"],
+        "cost / latency p50/p95",
+        f"{cost} · {cl['latency_p50_s']}s/{cl['latency_p95_s']}s",
+        "—",
+    )
 
 
 def _write_github_summary(reports: list[dict]) -> None:
@@ -465,6 +609,9 @@ def _write_github_summary(reports: list[dict]) -> None:
     for report in reports:
         for suite, metric, value, floor in _summary_rows(report):
             lines.append(f"| {suite} | {metric} | {value} | {floor} |")
+        cost_row = _cost_summary_row(report)
+        if cost_row:
+            lines.append("| {} | {} | {} | {} |".format(*cost_row))
     lines.append("")
     verdict = (
         "✅ all suites passed"
@@ -490,6 +637,36 @@ def _sweep(lo: float, hi: float, step: float) -> None:
         t += step
 
 
+def _write_json(reports: list[dict], path: str, wall_time_s: float) -> None:
+    """Full machine-readable results (M5): per-case rows incl. cost/latency, aggregates, and
+    the models everything binds to. evals/results/baseline.json is a committed run of this."""
+    settings = get_settings()
+    payload = {
+        "generated_at": datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds"),
+        "models": {
+            "specialist": settings.specialist_model,
+            "triage": settings.triage_model,
+            "embedding": settings.embedding_model,
+            "judge": settings.judge_model,
+        },
+        "wall_time_s": round(wall_time_s, 1),
+        "total_cost_usd": round(
+            sum(
+                r["cost_latency"]["total_cost_usd"]
+                for r in reports
+                if r.get("cost_latency") and r["cost_latency"]["total_cost_usd"] is not None
+            ),
+            4,
+        ),
+        "passed": all(r["passed"] for r in reports),
+        "reports": reports,
+    }
+    out = Path(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(payload, indent=2) + "\n")
+    print(f"\nresults written to {out}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--suite", choices=SUITES, action="append", help="default: all suites")
@@ -497,7 +674,7 @@ def main() -> int:
         "--subset",
         action="store_true",
         help="cost-capped PR gate (ADR-026): full retrieval + the 10 flagged routing cases; "
-        "e2e and dedup are skipped (nightly-only). Overrides --suite.",
+        "e2e, dedup, and quality are skipped (nightly-only). Overrides --suite.",
     )
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--threshold", type=float, help="override stage-1 threshold (tuning)")
@@ -508,6 +685,9 @@ def main() -> int:
         help="score refusal cases via the knowledge agent (default) or stage 1 only (LLM-free)",
     )
     parser.add_argument("--sweep", nargs=3, type=float, metavar=("LO", "HI", "STEP"))
+    parser.add_argument(
+        "--out", metavar="PATH", help="write full JSON results (per-case cost/latency) here"
+    )
     args = parser.parse_args()
 
     if args.sweep:
@@ -517,6 +697,7 @@ def main() -> int:
     suite_names = list(SUBSET_SUITES) if args.subset else (args.suite or list(SUITES))
     ok = True
     reports = []
+    t_start = time.perf_counter()
     for name in suite_names:
         report = SUITES[name](
             k=args.k,
@@ -533,12 +714,19 @@ def main() -> int:
         refusal_n = next(
             (r["aggregates"]["n_refusal"] for r in reports if r["suite"] == "retrieval"), 0
         )
+        measured = sum(
+            r["cost_latency"]["total_cost_usd"]
+            for r in reports
+            if r.get("cost_latency") and r["cost_latency"]["total_cost_usd"] is not None
+        )
         print(
             f"\nsubset cost: {routing_n} routing agent runs + {refusal_n} refusal agent runs "
-            f"(gpt-5-mini) + ~30 query embeddings — ≈ $0.02–0.05 per run at 2026-07 prices"
+            f"(gpt-5-mini) + ~40 query embeddings — measured ${measured:.4f} this run"
         )
 
     _write_github_summary(reports)
+    if args.out:
+        _write_json(reports, args.out, time.perf_counter() - t_start)
     return 0 if ok else 1
 
 

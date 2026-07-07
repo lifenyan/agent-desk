@@ -1,0 +1,10 @@
+{"query": "How do I reset my password?", "note": "canonical accounts how-to; the baseline sanity case"}
+{"query": "I lost my phone with the authenticator app on it — how do I get back into my account?", "note": "MFA recovery: helpfulness needs the actual recovery steps, not a generic MFA overview"}
+{"query": "Walk me through setting up the VPN on my Mac.", "note": "OS-specific how-to: faithfulness catches steps imported from the Windows guide"}
+{"query": "What is the software reimbursement policy?", "note": "policy lookup: faithfulness catches invented thresholds/amounts not in the article"}
+{"query": "What's new in AstraCore v5.2 compared to v5.1?", "note": "release-notes path (get_release_notes): faithfulness catches features attributed to the wrong version"}
+{"query": "How do I report a phishing email I received?", "note": "security procedure: helpfulness needs the concrete reporting mechanism"}
+{"query": "How do I set an out of office reply?", "note": "email how-to; short answerable case"}
+{"query": "How do I add a network printer?", "note": "hardware/network how-to"}
+{"query": "Are we allowed to use AI tools like ChatGPT for work tasks?", "note": "policy with nuance: helpfulness needs the allowed/not-allowed conditions, not a yes/no"}
+{"query": "What do I need to do for IT setup on my first day?", "note": "onboarding checklist: helpfulness penalizes partial step coverage"}

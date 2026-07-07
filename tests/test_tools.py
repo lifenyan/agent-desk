@@ -40,6 +40,7 @@ from app.db.models import (  # noqa: E402
     Order,
     OrderStatus,
     Ticket,
+    TicketComment,
     TicketStatus,
     User,
 )
@@ -89,17 +90,27 @@ def other_user_asset(demo_user_id):
 
 @pytest.fixture
 def clean_writes():
-    """Delete orders/tickets (and their cascading comments) created during the test, keeping
-    the seeded DB byte-identical — the Streamlit demo depends on the seeded pending orders."""
+    """Delete orders/tickets/comments created during the test, keeping the seeded DB
+    byte-identical — the Streamlit demo depends on the seeded pending orders.
+
+    Comments are diffed EXPLICITLY, not left to the ticket cascade: the dedup-comment test
+    writes onto a SEEDED foreign ticket, so its comment survives the cascade — found in M5
+    as the source of the "license expired" comment accumulating once per pytest run (the
+    leak M4 blamed on killed-process windows; that diagnosis was wrong)."""
     with SessionLocal() as s:
         before_orders = set(s.scalars(select(Order.id)))
         before_tickets = set(s.scalars(select(Ticket.id)))
+        before_comments = set(s.scalars(select(TicketComment.id)))
     yield
     with SessionLocal() as s:
+        for comment in s.scalars(
+            select(TicketComment).where(TicketComment.id.notin_(before_comments))
+        ):
+            s.delete(comment)
         for order in s.scalars(select(Order).where(Order.id.notin_(before_orders))):
             s.delete(order)
         for ticket in s.scalars(select(Ticket).where(Ticket.id.notin_(before_tickets))):
-            s.delete(ticket)  # ORM cascade removes its comments
+            s.delete(ticket)  # ORM cascade removes any remaining comments
         s.commit()
 
 
