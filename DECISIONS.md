@@ -396,6 +396,8 @@ Date: 2026-07-07 · Status: accepted
 
 **Tradeoffs:** Nightly-only (minutes of wall time, ~10 agent runs — too slow/expensive per PR). LLM-latency-bound: measured 5–35 min for the same six flows. Flows share one server, so a crashed server fails everything downstream (acceptable: that IS a product failure).
 
+**Update (2026-07-07, second nightly run):** order_approve failed with "no order row created" — the scripted 2-turn conversation isn't always enough; the fulfillment agent sometimes asks one more clarifying question before acting. Fix in the flow, not the floor: the order flows now answer like a real user would (up to two bounded "everything is confirmed, place it" nudge turns, continuing until a submitted/pending row exists), and the report records how many nudges were used. The contract stays "the order reaches pending and is approvable from another process" — turn count was never the contract. The all-flows floor stays at 1.0.
+
 ---
 
 ## ADR-028: Dedup gray band measured by an action-scored eval; baseline 12/12 with observed single-probe flips; per-device issues don't link

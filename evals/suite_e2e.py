@@ -125,19 +125,44 @@ def _demo_user_id(s) -> uuid.UUID:
 def _flow_order(base: str, case: dict, decision: str) -> dict:
     """HITL order (> $500): chat run ends with draft->pending for the RIGHT user; then the
     approvals API decides from a fresh client. decision: "approve" -> placed, "reject" ->
-    cancelled."""
+    cancelled.
+
+    The scripted 2-turn conversation sometimes isn't enough — the agent may ask one more
+    clarifying question before acting (observed on the second nightly: no order row after 2
+    turns). The contract is "the order reaches pending", not "in exactly N turns", so the
+    flow answers like a real user would: up to two nudge turns, then it fails for real.
+    """
     with SessionLocal() as s:
         before = set(s.scalars(select(Order.id)))
     sid = str(uuid.uuid4())
+    nudges_used = 0
     with httpx.Client() as chat_client:
         for message in case["messages"]:
             _chat(chat_client, base, message, sid)
+        for _ in range(2):
+            with SessionLocal() as s:
+                new_ids = set(s.scalars(select(Order.id))) - before
+                # done only when the HITL contract is reached — a draft-only row means the
+                # agent still hasn't requested approval, so keep answering
+                if any(
+                    (o.status, o.approval_state) == ("submitted", "pending")
+                    for o in (s.get(Order, oid) for oid in new_ids)
+                ):
+                    break
+            nudges_used += 1
+            _chat(
+                chat_client,
+                base,
+                "Yes, everything is confirmed — please go ahead and place the order now with "
+                "my defaults. No further questions needed.",
+                sid,
+            )
 
     with SessionLocal() as s:
         demo_id = _demo_user_id(s)
         new = [s.get(Order, oid) for oid in set(s.scalars(select(Order.id))) - before]
         if not new:
-            return {"ok": False, "detail": "no order row created"}
+            return {"ok": False, "detail": f"no order row created ({nudges_used} nudges used)"}
         # Identity assertion (user_tools DESIGN NOTE): every row this run created belongs to
         # the requesting user — none for anyone else.
         foreign = [o for o in new if o.user_id != demo_id]
@@ -159,9 +184,13 @@ def _flow_order(base: str, case: dict, decision: str) -> dict:
     with SessionLocal() as s:
         order = s.get(Order, order_id)
         got = (order.status, order.approval_state)
+    nudge_note = f", {nudges_used} nudge(s)" if nudges_used else ""
     return {
         "ok": got == expected,
-        "detail": f"pending -> {decision} -> {got[0]}/{got[1]} (expected {expected[0]}/{expected[1]})",
+        "detail": (
+            f"pending -> {decision} -> {got[0]}/{got[1]} "
+            f"(expected {expected[0]}/{expected[1]}{nudge_note})"
+        ),
     }
 
 
