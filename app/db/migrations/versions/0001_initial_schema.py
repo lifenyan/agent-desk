@@ -4,6 +4,7 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-07-04
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -21,58 +22,95 @@ EMBED_DIM = 1536
 # Non-obvious documentation mirrored from design/DATA_DICTIONARY.md into the DB itself,
 # so `\d+ <table>` in psql shows the reasoning (required by the M0 acceptance checks).
 COMMENTS: list[tuple[str, str]] = [
-    ("TABLE user_facts",
-     "Long-term AI memory (ADR-007), NOT an ITSM entity: stable facts about a user, extracted at "
-     "session end and injected at session start so later sessions remember earlier ones."),
-    ("COLUMN user_facts.fact_type",
-     "Category key (device_os/org/contact_preference/...). Doubles as the dedup key: a new fact of "
-     "an existing type updates the old one (unique on user_id+fact_type) instead of appending."),
+    (
+        "TABLE user_facts",
+        "Long-term AI memory (ADR-007), NOT an ITSM entity: stable facts about a user, extracted at "
+        "session end and injected at session start so later sessions remember earlier ones.",
+    ),
+    (
+        "COLUMN user_facts.fact_type",
+        "Category key (device_os/org/contact_preference/...). Doubles as the dedup key: a new fact of "
+        "an existing type updates the old one (unique on user_id+fact_type) instead of appending.",
+    ),
     ("COLUMN user_facts.fact", "The remembered content, e.g. 'owns a MacBook Pro 16'."),
-    ("COLUMN user_facts.source", "Session/conversation the fact was extracted from (for debugging beliefs)."),
-    ("COLUMN user_facts.confidence",
-     "0-1 extraction confidence. Merge keeps newer/higher-confidence; injection skips below a threshold."),
+    (
+        "COLUMN user_facts.source",
+        "Session/conversation the fact was extracted from (for debugging beliefs).",
+    ),
+    (
+        "COLUMN user_facts.confidence",
+        "0-1 extraction confidence. Merge keeps newer/higher-confidence; injection skips below a threshold.",
+    ),
     ("COLUMN user_facts.updated_at", "Tiebreaker in the merge rule."),
-    ("COLUMN catalog_items.form_schema",
-     "Self-describing order form: list of {name,label,type,options,required,autofill}. `autofill` "
-     "hints (asset.os, user.org) let the fulfillment agent pre-fill everything knowable — this one "
-     "column is what makes that agent generic across all items instead of one form per product."),
-    ("COLUMN orders.form_values",
-     "Filled answers to the item's form_schema; keys must match the field names declared there."),
-    ("COLUMN orders.approval_state",
-     "HITL state, deliberately separate from status. 'pending' means the run ended awaiting a "
-     "manager; approval places the order on a fresh run (ADR-005). Persisted here (not framework "
-     "memory) so approvals survive restarts. May be 'pending' only while status='submitted'."),
-    ("COLUMN tickets.embedding",
-     "Semantic vector of title+description ONLY (structured fields stay out — they are SQL filters). "
-     "Powers dedup: incident agent similarity-searches open tickets before creating a new one. "
-     "NULL in M0; populated in M1."),
-    ("COLUMN article_chunks.embedding",
-     "Dense vector of content (HNSW, cosine). Catches paraphrase. NULL in M0; populated in M1."),
-    ("COLUMN article_chunks.tsv",
-     "GENERATED tsvector of the same content (GIN, ts_rank): the lexical half of hybrid search, "
-     "catching exact tokens (error codes, versions). Generated so it can never drift from content."),
-    ("COLUMN article_chunks.category",
-     "Denormalized from the parent article so retrieval can PRE-filter (category/doc_type/status/"
-     "version) during the vector+FTS scan rather than post-filtering after a join. The article "
-     "remains the source of truth; the ingest pipeline re-propagates these on any article change."),
-    ("COLUMN article_chunks.chunk_index",
-     "0-based position within the article (unique with article_id). Reconstructs reading order and "
-     "enables neighbor expansion (fetch chunks 2 and 4 when chunk 3 matches)."),
-    ("COLUMN knowledge_articles.body",
-     "Full original text; chunks are DERIVED from it so articles can be re-chunked and shown in full."),
-    ("COLUMN knowledge_articles.category",
-     "Ticket-category enum value (accounts/software/hardware/network/email/other). Lets retrieval "
-     "filter/boost by category and matches a ticket to same-category articles (invariant 2). Added in M0."),
-    ("COLUMN knowledge_articles.doc_type",
-     "Finer bucket within a category (howto/policy/release_notes/product/onboarding) for doc-type-"
-     "filtered retrieval; release_notes is also inferable from version. Added in M0."),
-    ("COLUMN knowledge_articles.version",
-     "Product version for release-notes articles (e.g. v5.1); null for how-tos. Backs metadata-filtered "
-     "'compare v5.1 vs v5.2' retrieval."),
-    ("COLUMN assets.os",
-     "macos/windows/linux — same enum as catalog_items.os_compat and article OS tags (invariant 1)."),
-    ("COLUMN catalog_items.os_compat",
-     "Set of supported OS values (text[]); how the agent picks the Mac vs Windows variant."),
+    (
+        "COLUMN catalog_items.form_schema",
+        "Self-describing order form: list of {name,label,type,options,required,autofill}. `autofill` "
+        "hints (asset.os, user.org) let the fulfillment agent pre-fill everything knowable — this one "
+        "column is what makes that agent generic across all items instead of one form per product.",
+    ),
+    (
+        "COLUMN orders.form_values",
+        "Filled answers to the item's form_schema; keys must match the field names declared there.",
+    ),
+    (
+        "COLUMN orders.approval_state",
+        "HITL state, deliberately separate from status. 'pending' means the run ended awaiting a "
+        "manager; approval places the order on a fresh run (ADR-005). Persisted here (not framework "
+        "memory) so approvals survive restarts. May be 'pending' only while status='submitted'.",
+    ),
+    (
+        "COLUMN tickets.embedding",
+        "Semantic vector of title+description ONLY (structured fields stay out — they are SQL filters). "
+        "Powers dedup: incident agent similarity-searches open tickets before creating a new one. "
+        "NULL in M0; populated in M1.",
+    ),
+    (
+        "COLUMN article_chunks.embedding",
+        "Dense vector of content (HNSW, cosine). Catches paraphrase. NULL in M0; populated in M1.",
+    ),
+    (
+        "COLUMN article_chunks.tsv",
+        "GENERATED tsvector of the same content (GIN, ts_rank): the lexical half of hybrid search, "
+        "catching exact tokens (error codes, versions). Generated so it can never drift from content.",
+    ),
+    (
+        "COLUMN article_chunks.category",
+        "Denormalized from the parent article so retrieval can PRE-filter (category/doc_type/status/"
+        "version) during the vector+FTS scan rather than post-filtering after a join. The article "
+        "remains the source of truth; the ingest pipeline re-propagates these on any article change.",
+    ),
+    (
+        "COLUMN article_chunks.chunk_index",
+        "0-based position within the article (unique with article_id). Reconstructs reading order and "
+        "enables neighbor expansion (fetch chunks 2 and 4 when chunk 3 matches).",
+    ),
+    (
+        "COLUMN knowledge_articles.body",
+        "Full original text; chunks are DERIVED from it so articles can be re-chunked and shown in full.",
+    ),
+    (
+        "COLUMN knowledge_articles.category",
+        "Ticket-category enum value (accounts/software/hardware/network/email/other). Lets retrieval "
+        "filter/boost by category and matches a ticket to same-category articles (invariant 2). Added in M0.",
+    ),
+    (
+        "COLUMN knowledge_articles.doc_type",
+        "Finer bucket within a category (howto/policy/release_notes/product/onboarding) for doc-type-"
+        "filtered retrieval; release_notes is also inferable from version. Added in M0.",
+    ),
+    (
+        "COLUMN knowledge_articles.version",
+        "Product version for release-notes articles (e.g. v5.1); null for how-tos. Backs metadata-filtered "
+        "'compare v5.1 vs v5.2' retrieval.",
+    ),
+    (
+        "COLUMN assets.os",
+        "macos/windows/linux — same enum as catalog_items.os_compat and article OS tags (invariant 1).",
+    ),
+    (
+        "COLUMN catalog_items.os_compat",
+        "Set of supported OS values (text[]); how the agent picks the Mac vs Windows variant.",
+    ),
 ]
 
 
@@ -112,9 +150,7 @@ def upgrade() -> None:
         sa.Column("version", sa.String(), nullable=True),
         sa.Column("status", sa.String(), nullable=False, server_default="published"),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.CheckConstraint(
-            "status IN ('published','outdated','draft')", name="ck_articles_status"
-        ),
+        sa.CheckConstraint("status IN ('published','outdated','draft')", name="ck_articles_status"),
         sa.CheckConstraint(
             "category IN ('accounts','software','hardware','network','email','other')",
             name="ck_articles_category",
@@ -158,9 +194,7 @@ def upgrade() -> None:
             "doc_type IN ('howto','policy','release_notes','product','onboarding')",
             name="ck_chunks_doc_type",
         ),
-        sa.CheckConstraint(
-            "status IN ('published','outdated','draft')", name="ck_chunks_status"
-        ),
+        sa.CheckConstraint("status IN ('published','outdated','draft')", name="ck_chunks_status"),
     )
     op.create_index(
         "ix_article_chunks_embedding_hnsw",
@@ -169,9 +203,7 @@ def upgrade() -> None:
         postgresql_using="hnsw",
         postgresql_ops={"embedding": "vector_cosine_ops"},
     )
-    op.create_index(
-        "ix_article_chunks_tsv", "article_chunks", ["tsv"], postgresql_using="gin"
-    )
+    op.create_index("ix_article_chunks_tsv", "article_chunks", ["tsv"], postgresql_using="gin")
     op.create_index("ix_article_chunks_category", "article_chunks", ["category"])
     op.create_index("ix_article_chunks_doc_type", "article_chunks", ["doc_type"])
     op.create_index("ix_article_chunks_status", "article_chunks", ["status"])
@@ -274,9 +306,7 @@ def upgrade() -> None:
         sa.Column("confidence", sa.Float(), nullable=False, server_default="1.0"),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
         sa.UniqueConstraint("user_id", "fact_type", name="uq_user_facts_user_type"),
-        sa.CheckConstraint(
-            "confidence >= 0 AND confidence <= 1", name="ck_user_facts_confidence"
-        ),
+        sa.CheckConstraint("confidence >= 0 AND confidence <= 1", name="ck_user_facts_confidence"),
     )
 
     for target, text in COMMENTS:

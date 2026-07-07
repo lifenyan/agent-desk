@@ -63,7 +63,11 @@ def cache_response(key_fn: Callable[..., str | None], ttl_seconds: int | None = 
             stats.record("response", misses=1, r=r)
             result = fn(*args, **kwargs)
             if isinstance(result, dict) and "error" not in result:
-                ttl = ttl_seconds if ttl_seconds is not None else get_settings().response_cache_ttl_seconds
+                ttl = (
+                    ttl_seconds
+                    if ttl_seconds is not None
+                    else get_settings().response_cache_ttl_seconds
+                )
                 try:
                     r.setex(key, ttl, json.dumps(result).encode())
                 except redis.RedisError as exc:

@@ -65,9 +65,7 @@ def get_or_embed(
         return embed_texts(texts, model=model)
 
     # Deduplicate misses so identical texts cost one embedding.
-    miss_texts: dict[bytes, str] = {
-        k: t for k, t, blob in zip(keys, texts, cached) if blob is None
-    }
+    miss_texts: dict[bytes, str] = {k: t for k, t, blob in zip(keys, texts, cached) if blob is None}
     if miss_texts:
         miss_keys = list(miss_texts)
         vectors = embed_texts(list(miss_texts.values()), model=model)

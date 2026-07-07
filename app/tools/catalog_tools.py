@@ -195,7 +195,9 @@ def request_approval(ctx: RunContextWrapper[ChatContext], order_id: str) -> dict
             item = session.get(CatalogItem, order.item_id)
             return _order_payload(order, item) | {"note": "already awaiting approval"}
         if order.status != OrderStatus.draft:
-            return {"error": f"order {order_id} is {order.status!r}, not a draft awaiting submission"}
+            return {
+                "error": f"order {order_id} is {order.status!r}, not a draft awaiting submission"
+            }
         item = session.get(CatalogItem, order.item_id)
         if not _requires_approval(item):
             # Self-correcting path: no approval actually needed — just place it.

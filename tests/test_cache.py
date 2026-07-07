@@ -132,7 +132,9 @@ def query_vectors(monkeypatch):
     """text -> vector lookup table; a query missing from it that gets embedded is a test bug."""
     vectors: dict[str, list[float]] = {}
     monkeypatch.setattr(
-        semantic_cache, "embed_query", lambda text, model=None: vectors[text]  # noqa: ARG005
+        semantic_cache,
+        "embed_query",
+        lambda text, model=None: vectors[text],  # noqa: ARG005
     )
     return vectors
 

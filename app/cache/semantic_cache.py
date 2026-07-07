@@ -122,7 +122,11 @@ def lookup(
         stats.record("semantic", hits=1, r=r)
         logger.info(
             "semantic cache HIT sim=%.3f (threshold %.2f) in %.1f ms: %r ~ %r",
-            best_sim, threshold, elapsed_ms, message, best["query"],
+            best_sim,
+            threshold,
+            elapsed_ms,
+            message,
+            best["query"],
         )
         return CachedAnswer(
             query=best["query"],
@@ -133,7 +137,9 @@ def lookup(
     stats.record("semantic", misses=1, r=r)
     logger.info(
         "semantic cache miss (best sim %.3f over %d entries) in %.1f ms",
-        best_sim, len(keys), elapsed_ms,
+        best_sim,
+        len(keys),
+        elapsed_ms,
     )
     return None
 
@@ -195,7 +201,8 @@ def invalidate_articles(changed_article_ids: set[str], *, r: redis.Redis | None 
             r.delete(*stale)
         logger.info(
             "semantic cache invalidation: %d/%d entries cited a changed article",
-            len(stale), len(keys),
+            len(stale),
+            len(keys),
         )
         return len(stale)
     except redis.RedisError as exc:
