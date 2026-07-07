@@ -13,18 +13,29 @@ Idempotency comes from two layers:
 Also embeds tickets (title + description) where embedding IS NULL — models.py records that both
 embedding columns are populated in M1 with the same model (cross-table invariant 3); the
 incident agent's dedup search (M2) consumes these.
+
+M3 (ADR-024): because this is the single write path, it is also the semantic cache's
+invalidation point. Change detection is a per-article CONTENT HASH — old chunk content (read
+from the DB before the swap) vs freshly chunked output — NOT articles.updated_at, which is
+SQLAlchemy `onupdate` (client-side only): a raw-SQL edit, exactly how a demo edits an article,
+never bumps it. Zero new storage; side effect (correct): a chunker change re-hashes everything
+as changed and flushes the whole semantic cache.
 """
-# Implemented in M1.
+# Implemented in M1; M3 added the semantic-cache invalidation hook.
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import uuid
+from collections import defaultdict
+from collections.abc import Iterable
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.cache import semantic_cache
 from app.cache.embedding_cache import get_or_embed
 from app.db.database import SessionLocal
 from app.db.models import ArticleChunk, KnowledgeArticle, Ticket
@@ -40,9 +51,51 @@ def chunk_id(article_id: uuid.UUID, chunk_index: int) -> uuid.UUID:
     return uuid.uuid5(_CHUNK_NAMESPACE, f"{article_id}:{chunk_index}")
 
 
+def content_hash(contents: Iterable[str]) -> str:
+    """Order-sensitive hash of one article's chunk contents (chunk_index order)."""
+    h = hashlib.sha256()
+    for content in contents:
+        h.update(content.encode())
+        h.update(b"\x00")  # delimiter: ("ab","c") must not collide with ("a","bc")
+    return h.hexdigest()
+
+
+def changed_article_ids(
+    old_hashes: dict[uuid.UUID, str], new_hashes: dict[uuid.UUID, str]
+) -> set[str]:
+    """Articles whose chunk content changed or disappeared since the last ingest (ADR-024).
+
+    Brand-new articles (no old hash) are NOT "changed": no cached answer can cite them yet.
+    """
+    return {
+        str(article_id)
+        for article_id, old in old_hashes.items()
+        if new_hashes.get(article_id) != old
+    }
+
+
+def _existing_content_hashes(session: Session) -> dict[uuid.UUID, str]:
+    """Per-article hash of the chunk content currently in the DB (the previous ingest's output)."""
+    rows = session.execute(
+        select(ArticleChunk.article_id, ArticleChunk.content).order_by(
+            ArticleChunk.article_id, ArticleChunk.chunk_index
+        )
+    ).all()
+    by_article: dict[uuid.UUID, list[str]] = defaultdict(list)
+    for article_id, content in rows:
+        by_article[article_id].append(content)
+    return {article_id: content_hash(contents) for article_id, contents in by_article.items()}
+
+
 def ingest_articles(session: Session) -> dict[str, int]:
-    """Rebuild all article_chunks from knowledge_articles: chunk, embed (cached), atomic swap."""
+    """Rebuild all article_chunks from knowledge_articles: chunk, embed (cached), atomic swap.
+
+    Also computes which articles CHANGED (content-hash diff, old DB chunks vs fresh output)
+    and deletes the semantic-cache entries citing them (ADR-024) — this function is the single
+    write path, so it is the only place staleness can originate.
+    """
     articles = session.scalars(select(KnowledgeArticle).order_by(KnowledgeArticle.id)).all()
+    old_hashes = _existing_content_hashes(session)  # BEFORE the swap deletes them
 
     chunks = [
         chunk
@@ -58,6 +111,13 @@ def ingest_articles(session: Session) -> dict[str, int]:
         )
     ]
     vectors = get_or_embed([c.content for c in chunks])
+
+    new_contents: dict[uuid.UUID, list[str]] = defaultdict(list)
+    for c in chunks:  # chunk_article yields per-article chunks in chunk_index order
+        new_contents[c.article_id].append(c.content)
+    new_hashes = {aid: content_hash(contents) for aid, contents in new_contents.items()}
+    changed = changed_article_ids(old_hashes, new_hashes)
+    invalidated = semantic_cache.invalidate_articles(changed)
 
     # Atomic swap inside the caller-committed transaction: readers never see a half-built index.
     session.execute(delete(ArticleChunk))
@@ -75,7 +135,12 @@ def ingest_articles(session: Session) -> dict[str, int]:
         )
         for c, v in zip(chunks, vectors)
     )
-    return {"articles": len(articles), "chunks": len(chunks)}
+    return {
+        "articles": len(articles),
+        "chunks": len(chunks),
+        "articles_changed": len(changed),
+        "cache_entries_invalidated": invalidated,
+    }
 
 
 def ingest_tickets(session: Session) -> dict[str, int]:

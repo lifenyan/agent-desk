@@ -34,6 +34,16 @@ class Settings(BaseSettings):
     # Refusal gate = best cosine similarity among retrieved chunks (NOT the rank-based RRF score).
     retrieval_refusal_threshold: float = 0.45
 
+    # --- caching (M3; the embedding cache has no knobs — exact-match, no TTL) ---
+    # Semantic-cache similarity gate (ADR-023), measured not vibed (ADR-017/021 discipline;
+    # evidence in ignore/tem/m3_semantic_cache_demo.py): tight paraphrases of a stored question
+    # score >= 0.816, near-miss neighbors ("change my wifi password") <= 0.672, and LOOSE
+    # paraphrases OVERLAP the near-miss band — so 0.75 = midpoint of the only separable gap.
+    # A false HIT serves the wrong answer; a false miss just re-runs the agent.
+    semantic_cache_threshold: float = 0.75
+    semantic_cache_ttl_seconds: int = 86_400  # 24 h — KB answers go stale slowly (+ ingest invalidation)
+    response_cache_ttl_seconds: int = 300  # 5 min — catalog/asset reads (ADR-025)
+
     # --- observability (M6) ---
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""

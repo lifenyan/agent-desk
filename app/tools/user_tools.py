@@ -3,7 +3,10 @@
 This module also owns the shared argument-trust helpers (`resolve_acting_user`, `parse_uuid_arg`)
 that ticket_tools and catalog_tools import — identity is defined once, here.
 """
-# Implemented in M2. M3 wraps lookups with response_cache.
+# Implemented in M2. M3 wrapped get_user_assets with the response cache (ADR-025) — the plain
+# function is decorated BEFORE function_tool, so the SDK wrapper picks it up for free.
+# get_user_profile stays uncached: it feeds order forms (cost_center/org), where a 5-minute-old
+# answer silently filling a form is a worse trade than one cheap SELECT.
 #
 # DESIGN NOTE (M2) — argument trust: schema/enum constraints (see knowledge_tools.py) enforce the
 # SHAPE of a tool arg but never its SEMANTICS. "Alice" and a user UUID are both valid strings, so
@@ -38,6 +41,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.context import ChatContext
+from app.cache.response_cache import cache_response
 from app.db.database import SessionLocal
 from app.db.models import Asset, User
 
@@ -112,6 +116,10 @@ def get_user_profile(ctx: RunContextWrapper[ChatContext]) -> dict:
         }
 
 
+# Response-cache key = the TRUSTED context identity (ADR-025): assets are user-scoped, so two
+# users must never share an entry. None (no acting user) bypasses the cache — the "sign in"
+# error dict must stay fresh, and error dicts are never stored anyway.
+@cache_response(key_fn=lambda ctx: (ctx.context.user_id or None) if ctx.context else None)
 def get_user_assets(ctx: RunContextWrapper[ChatContext]) -> dict:
     """List the hardware assets (laptop, desktop, monitor, phone) owned by the current user.
 

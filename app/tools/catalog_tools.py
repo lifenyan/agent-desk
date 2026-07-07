@@ -16,7 +16,8 @@ Order state machine (respects M0's CHECK — approval_state='pending' only while
 The price is ALWAYS read from the catalog row, never from an LLM argument — a model cannot
 talk an order under the approval threshold (DESIGN NOTE in user_tools.py).
 """
-# Implemented in M2 (HITL mechanism choice recorded in ADR-020).
+# Implemented in M2 (HITL mechanism choice recorded in ADR-020). M3 wrapped list_catalog_items
+# with the response cache (ADR-025) — the plain function is decorated BEFORE function_tool.
 
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.agents.context import ChatContext
+from app.cache.response_cache import cache_response
 from app.config import get_settings
 from app.db.database import SessionLocal
 from app.db.models import OS, ApprovalState, CatalogItem, Order, OrderStatus, User
@@ -82,6 +84,10 @@ def _order_payload(order: Order, item: CatalogItem) -> dict:
 # ---------------------------------------------------------------------------------------------
 
 
+# Response-cache key = the one argument (ADR-025). getattr covers both call shapes: the agent
+# path passes the OS StrEnum, direct callers may pass a raw string; an invalid string produces
+# an enum_error dict, which is never stored.
+@cache_response(key_fn=lambda os_filter=None: f"os={getattr(os_filter, 'value', os_filter)}")
 def list_catalog_items(os_filter: OS | None = None) -> dict:
     """List orderable catalog items (hardware, software licenses, services) with price and
     order-form schema.

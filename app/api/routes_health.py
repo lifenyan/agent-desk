@@ -1,11 +1,13 @@
-"""Health/readiness endpoints (DB + Redis connectivity)."""
-# Implemented in M1.
+"""Health/readiness endpoints (DB + Redis connectivity) + cache hit/miss stats."""
+# Implemented in M1; M3 added GET /cache/stats (the boring surface M6 exports to Langfuse).
 
 from __future__ import annotations
 
+import redis
 from fastapi import APIRouter, Response, status
 from sqlalchemy import text
 
+from app.cache import stats as cache_stats
 from app.cache.redis_client import get_redis
 from app.db.database import SessionLocal
 
@@ -40,3 +42,15 @@ def readyz(response: Response) -> dict:
     if not ready:
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     return {"status": "ready" if ready else "unavailable", "checks": checks}
+
+
+@router.get("/cache/stats")
+def cache_stats_endpoint(response: Response) -> dict:
+    """Persistent hit/miss counts + hit rates for the embedding/semantic/response caches."""
+    try:
+        return {"status": "ok", "caches": cache_stats.snapshot()}
+    except redis.RedisError as exc:
+        # Unlike cache reads/writes (which silently degrade), a stats READ has no request to
+        # protect — report the outage explicitly instead of returning fake zeros.
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unavailable", "error": exc.__class__.__name__}

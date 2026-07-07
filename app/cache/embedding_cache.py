@@ -10,7 +10,8 @@ float32 (pgvector's own precision), 6 KB per vector instead of ~30 KB of JSON.
 
 This is the layer callers use (`get_or_embed`); rag/embeddings.py underneath is cache-oblivious.
 """
-# Implemented in M1 (pulled forward from M3). M3 adds the semantic + response caches.
+# Implemented in M1 (pulled forward from M3). M3 added the semantic + response caches and the
+# shared persistent hit/miss counters (app/cache/stats.py) — this file only gained the counters.
 
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ import struct
 
 import redis
 
+from app.cache import stats
 from app.cache.redis_client import get_redis
 from app.config import get_settings
 from app.rag.embeddings import embed_texts
@@ -83,6 +85,7 @@ def get_or_embed(
     logger.info(
         "embedding cache: %d hits, %d embedded", len(texts) - len(miss_texts), len(miss_texts)
     )
+    stats.record("embedding", hits=len(texts) - len(miss_texts), misses=len(miss_texts), r=r)
     return [fresh[k] if blob is None else _unpack(blob) for k, blob in zip(keys, cached)]
 
 

@@ -38,7 +38,9 @@ with st.sidebar:
 
 def render_assistant(msg: dict) -> None:
     st.markdown(msg["answer"])
-    if msg.get("agent"):
+    if msg.get("cached"):
+        st.caption("⚡ served from cache (semantic match, no agent ran)")
+    elif msg.get("agent"):
         st.caption(f"answered by: `{msg['agent']}` agent")
     if msg.get("citations"):
         with st.expander(f"📚 Sources ({len(msg['citations'])})"):
@@ -77,6 +79,7 @@ if prompt := st.chat_input("How do I reset my password?"):
                     "answer": data["answer"],
                     "agent": data.get("agent"),
                     "citations": data.get("citations", []),
+                    "cached": data.get("cached", False),
                 }
             except httpx.HTTPError as exc:
                 msg = {

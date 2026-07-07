@@ -1,10 +1,11 @@
 """POST /chat — load session + user facts, check semantic cache (read-only intents), then run the router agent."""
 # Implemented in M1 (router run + structured citations); M2 added multi-turn continuity via
-# session_id (ADR-019). M3 adds the semantic-cache pre-check; M5 adds the Postgres session
-# backend + user-facts loading.
+# session_id (ADR-019). M3 added the semantic-cache pre-check (ADR-023); M5 adds the Postgres
+# session backend + user-facts loading.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.context import ChatContext
 from app.agents.router import router_agent
+from app.cache import semantic_cache
 
 router = APIRouter(tags=["chat"])
 
@@ -49,6 +51,7 @@ class ChatResponse(BaseModel):
     answer: str
     agent: str  # which agent produced the final answer (router vs knowledge = routing visibility)
     citations: list[Citation]
+    cached: bool = False  # True = served from the semantic cache, no agent ran (M3, ADR-023)
 
 
 def _collect_citations(items: list[Any]) -> list[Citation]:
@@ -86,16 +89,54 @@ def _collect_citations(items: list[Any]) -> list[Citation]:
     return sorted(by_article.values(), key=lambda c: c.rrf_score, reverse=True)
 
 
+async def _is_first_turn(session: SQLiteSession | None) -> bool:
+    """Semantic-cache session policy (ADR-023): only a conversation's FIRST message may be
+    cache-served or cache-stored. A mid-conversation message ("yes, go ahead", "what about
+    v5.2?") means whatever the history makes it mean — matching it against a stored standalone
+    Q&A is wrong even at similarity 1.0."""
+    return session is None or not await session.get_items(limit=1)
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest) -> ChatResponse:
+    session = _load_session(request.session_id)
+
+    # Semantic-cache pre-check (ADR-023): BEFORE any agent runs. Only read-only (knowledge)
+    # answers are ever STORED, so a hit can never re-play an order or a ticket. to_thread:
+    # the lookup does sync Redis + (on non-empty cache) one embedding call.
+    first_turn = await _is_first_turn(session)
+    if first_turn:
+        hit = await asyncio.to_thread(semantic_cache.lookup, request.message)
+        if hit is not None:
+            if session is not None:
+                # Keep the conversation coherent if the user keeps talking: the session must
+                # contain the turn we just short-circuited.
+                await session.add_items(
+                    [
+                        {"role": "user", "content": request.message},
+                        {"role": "assistant", "content": hit.answer},
+                    ]
+                )
+            return ChatResponse(
+                answer=hit.answer,
+                agent="knowledge",  # entries are only ever written from knowledge runs
+                citations=[Citation(**c) for c in hit.citations],  # stored; NOT _collect_citations
+                cached=True,
+            )
+
     result = await Runner.run(
         router_agent,
         request.message,
         context=ChatContext(user_id=request.user_id),
-        session=_load_session(request.session_id),
+        session=session,
     )
-    return ChatResponse(
-        answer=str(result.final_output),
-        agent=result.last_agent.name,
-        citations=_collect_citations(result.new_items),
-    )
+    answer = str(result.final_output)
+    citations = _collect_citations(result.new_items)
+
+    # Write side of the read-only guarantee: knowledge answers with evidence only (never
+    # fulfillment/incident, never refusals) — and only first-turn ones, symmetric with lookup.
+    citation_dicts = [c.model_dump() for c in citations]
+    if first_turn and semantic_cache.is_cacheable(result.last_agent.name, answer, citation_dicts):
+        await asyncio.to_thread(semantic_cache.store, request.message, answer, citation_dicts)
+
+    return ChatResponse(answer=answer, agent=result.last_agent.name, citations=citations)
