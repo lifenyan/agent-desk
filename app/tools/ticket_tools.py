@@ -153,7 +153,7 @@ def update_ticket(
         ticket = session.get(Ticket, ticket_uuid)
         if ticket is None:
             return {"error": f"ticket {ticket_id} not found"}
-        if ticket.user_id == user.id:
+        if ticket.user_id != user.id:
             return {"error": f"ticket {ticket_id} does not belong to the current user"}
         if status is None and priority is None and category is None:
             return {"error": "nothing to update: pass status, priority, and/or category"}
