@@ -367,3 +367,59 @@ Date: 2026-07-07 · Status: accepted
 **Alternatives:** `functools.lru_cache` (per-process, no TTL, survives nothing, invisible to /cache/stats); caching inside the SDK tool wrapper (loses direct callers — the approvals API and tests use the plain functions); caching at the DB/query layer (opaque, and the tool payload is the natural unit the agent consumes).
 
 **Tradeoffs:** Up to 5 minutes of staleness on catalog/asset reads (an asset assigned mid-conversation won't appear until expiry). Tests must isolate the decorator's Redis (autouse FakeRedis fixture in conftest) since the decorated functions run in every tool test.
+
+---
+
+## ADR-026: Eval floors in one committed file (thresholds.toml); PR gate = deterministic subset with unchanged models
+
+Date: 2026-07-07 · Status: accepted
+
+**Context:** M4 turns the eval suites into CI gates, which surfaced three copies-of-truth risks: floors hardcoded in `run_evals.py` that CI would have to duplicate; the original M4 sketch's floors (0.75/0.85) sitting BELOW the ones the code already enforced (0.8/0.9) against measured baselines of 1.0; and per-PR eval cost (the full routing suite alone is ~30 agent runs).
+
+**Decision:** (1) All floors move to `evals/thresholds.toml` — the harness reads it, CI runs the harness, so workflows and local runs cannot disagree; TOML because it carries the WHY of each number as comments and stdlib `tomllib` parses it. (2) Floors stay at the ENFORCED values (recall@5 ≥ 0.8, refusal accuracy = 1.0, routing ≥ 0.9), concretizing ADR-010: floors are regression gates set below observed run-to-run variance, never aspirational targets — and never loosened to match an old plan when the measured baseline is tighter (baselines: retrieval 1.000/0.980, routing 1.000). (3) The PR gate is `--subset`: the FULL retrieval suite (already cheap — the answerable slice is LLM-free, only 5 refusal cases run the agent) + 10 routing cases flagged `"subset": true` IN the dataset (all 6 hard cases — each earned its place by catching a real bug — plus one easy case per specialist and the ticket-update path). Selection lives in the dataset, so it is deterministic and diff-reviewed; CI runs stay comparable. Measured subset cost ≈ 15 agent runs + ~30 embeddings ≈ $0.02–0.05. (4) Models are deliberately NOT swapped for the subset (no "cheaper model for CI"): the floors are only meaningful against the models that produced the baselines (gpt-5-mini + text-embedding-3-small — the same lesson as the ADR-021/023 thresholds binding to their embedding model).
+
+**Alternatives:** Floors in workflow env vars (second copy of truth, invisible to local runs); JSON/YAML config (no comments / not stdlib); random per-run case sampling (irreproducible CI, flaky diffs); running the full routing suite per PR (3× the cost for signal the nightly already provides); a cheaper model for the PR gate (measures a system nobody ships).
+
+**Tradeoffs:** The subset can miss a regression confined to the 20 unflagged routing cases until the nightly run — accepted, that is exactly ADR-010's margin trade. thresholds.toml is one more file a reader must find (mitigated: `run_evals.py`'s docstring and both workflows point at it).
+
+---
+
+## ADR-027: E2E eval runs through the real HTTP contract, asserts side effects, and treats the semantic cache as product
+
+Date: 2026-07-07 · Status: accepted
+
+**Context:** M2/M3 acceptance was proven by throwaway scripts (`ignore/tem/m2_e2e_acceptance.py`, `m3_semantic_cache_demo.py`) — real evidence, but unrepeatable and not gating anything. The tests in `tests/` are deliberately LLM-free, and the routing suite calls `Runner.run` directly — so nothing repeatable exercised POST /chat end-to-end, and the user_tools DESIGN NOTE's debt ("assert identity/ownership in the M4 e2e eval") was still open.
+
+**Decision:** `SUITES["e2e"]` (evals/suite_e2e.py, nightly + on-demand) formalizes those scripts: six flows through a LIVE uvicorn speaking the exact HTTP contract the UIs speak, scored on SIDE EFFECTS read from the DB, never on answer text. (1) The suite spawns its own server on a dedicated port (8123) and refuses to adopt a stale one (M2's acceptance lost an afternoon to a stale dev server on :8000); `E2E_API_URL` targets an external server explicitly. (2) Identity is asserted, not assumed: order flows check every created row belongs to the requesting user; approve/reject happen from a FRESH client after the chat run ended — the "another process" half of ADR-020. (3) Because flows go through routes_chat, they hit the M3 semantic cache — embraced, not avoided: the knowledge flow asserts a fresh-session paraphrase (measured 0.937 cosine, safely above the 0.75 threshold) serves cached=true, and the refusal flow asserts refusals are never stored. Determinism: semcache flushed in setup, fresh uuid4 session_ids per request (first-turn-only policy), action-shaped queries never stored by the write-time gate. (4) Cleanup = snapshot-diff-delete, same pattern as the routing suite. (5) Floor: all flows pass — each flow is a product contract, one broken flow is a broken product. Case-design findings baked into the dataset: AutoCAD (windows-only) correctly UNORDERABLE for the mac-owning demo user (the reject flow now orders an OS-independent iPhone), and the link flow's report pre-authorizes the action (without it the agent described the duplicate without writing the comment in 1 of 2 runs).
+
+**Alternatives:** Keep acceptance scripts in ignore/ (unrepeatable, no gate); e2e via Runner.run like routing (misses routes_chat: sessions, cache, citation extraction — where M3 bugs would live); TestClient in-process (misses real server lifecycle + the fresh-process approval contract); mocking the LLM (would assert the mock).
+
+**Tradeoffs:** Nightly-only (minutes of wall time, ~10 agent runs — too slow/expensive per PR). LLM-latency-bound: measured 5–35 min for the same six flows. Flows share one server, so a crashed server fails everything downstream (acceptable: that IS a product failure).
+
+---
+
+## ADR-028: Dedup gray band measured by an action-scored eval; baseline 12/12 with observed single-probe flips; per-device issues don't link
+
+Date: 2026-07-07 · Status: accepted
+
+**Context:** ADR-021 left the 0.60–0.80 cosine band to agent judgment — and left that judgment UNevaluated (honest-accounting debt from M2: the 0.80 flag was measured, the agent's gray-band decisions never were). This suite is also the designated evidence base for the deferred cross-encoder/pair-judge upgrade.
+
+**Decision:** `SUITES["dedup"]` (evals/suite_dedup.py, nightly): 6 link probes (user-phrased fresh reports of seeded issues with OPEN tickets → expect add_ticket_comment on that group) + 6 traps (same device/domain, DIFFERENT failure → expect create_ticket), run through the incident agent with real tools, scored on the DB action taken (created beats linked if both), per-case cleanup so probes never contaminate each other. All 12 probes measured in-band (top candidate similarity 0.52–0.76 — none trip the 0.80 flag, so every score IS stage-2 judgment). **Baseline (2026-07-07): 12/12 on the final dataset; runs during dataset finalization scored 9/12 and 10/12, with two probes observed flipping run-to-run** (the update-stuck link probe once created; the printer-streak trap once took no action at all — a lost report, the failure mode the instructions explicitly warn against). Floor set at 0.75: three flips below the observed best, one below the observed worst — red means systematic judgment regression, not one flaky probe. Two probe-design findings, corrected on the merits and disclosed: (1) the first draft expected LINKs onto other users' per-device tickets (battery, docking station) — wrong on the merits, another user's battery is a different asset; link probes must be SHARED-infrastructure issues (SSO, update server, wifi, DNS, MFA, mail routing). (2) One outage can span several seeded groups ("DNS not resolving" vs "can't reach internal site"), so link probes accept a list of correct groups.
+
+**Alternatives:** Scoring the agent's stated intention from the answer text (the M2 lesson: assert the row, not the sentence); judging linked-vs-created with an LLM judge (the DB diff is deterministic and free); reusing the sweep's raw cosine measurements as the eval (measures embeddings again, not the judgment ADR-021 delegated to the agent).
+
+**Tradeoffs:** 12 probes is a small n — one probe is 8.3 points; the floor absorbs that, and growing the dataset is cheap (add a line). Gray-band judgment is genuinely variable run-to-run; the suite measures (rather than hides) that, at the cost of an occasionally red nightly worth reading. Cross-encoder/pair-judge stays deferred: at a 12/12 baseline there is nothing for it to fix yet — the trigger is this suite trending down as probes grow.
+
+---
+
+## ADR-029: deploy.yml ships inert — dispatch-only plus a variable-gated push trigger — reconciled with ADR-009's manual first deploy
+
+Date: 2026-07-07 · Status: accepted
+
+**Context:** M4's sketch said "deploy on merge to main", but ADR-009 makes the FIRST deploy deliberately manual (a learning exercise) and it has not happened: there is no Railway project, token, or URL. A deploy workflow that pretends otherwise either fails on every merge (red noise that trains ignoring CI) or silently skips (a green "deploy" that shipped nothing — worse).
+
+**Decision:** Ship the workflow INERT but complete: `workflow_dispatch` always enters the job and fails LOUDLY at a secrets/variables guard listing exactly what is missing; the `push: main` trigger is gated by the repo variable `DEPLOY_ENABLED == 'true'` — flipping one switch arms deploy-on-merge after the manual first deploy exists. Armed behavior: validate the image builds locally (a broken Dockerfile fails before touching the platform) → `railway up` the API service → `alembic upgrade head` as an explicit release step (the image CMD also migrates at boot; the workflow makes the schema step observable) → poll `/readyz` (the real readiness contract — Postgres+Redis checks, 503 on failure; `/health` does not exist) for 5 minutes and fail if never ready. Arming runbook + required secrets/variables live in DEPLOY.md. Acceptance for M4 is actionlint/dry-run review only; live verification is explicitly deferred until after the manual first deploy.
+
+**Alternatives:** Deploy-on-merge now (nothing to deploy to); no workflow until M-later (loses the review cycle — the workflow's logic gets designed while the context is loaded, verified when armed); a permanently commented-out workflow body (rots invisibly, actionlint can't check it); gating dispatch too (a human clicking "Run workflow" deserves a real error, not a skip).
+
+**Tradeoffs:** The workflow is unverified against a live platform until armed — its Railway CLI specifics (`railway up --ci`, `railway ssh -- alembic upgrade head`) may need touch-up on first arming, which the DEPLOY.md dry-run step (step 4) exists to catch. Until DEPLOY_ENABLED exists as a variable, every push to main shows a skipped Deploy run in the Actions tab (accepted: a visible, honest "not armed").

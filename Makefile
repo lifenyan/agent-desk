@@ -1,4 +1,4 @@
-.PHONY: dev api ui approvals ingest test eval lint db-up db-down migrate generate seed reset
+.PHONY: dev api ui approvals ingest test eval eval-subset ci-local lint db-up db-down migrate generate seed reset
 
 # --- M0: database + data ---------------------------------------------------------------------------
 
@@ -45,8 +45,17 @@ approvals:  ## manager approval view (M2 HITL; expects the API on :8000, or API_
 test:  ## run unit tests
 	pytest tests/
 
-eval:  ## run eval suites (M1: retrieval; the CI --subset flag arrives in M4)
+eval:  ## FULL eval run: retrieval + routing (30 runs) + e2e + dedup — nightly-sized, use sparingly
 	python -m evals.run_evals
+
+eval-subset:  ## the cost-capped PR gate (ADR-026): full retrieval + 10 routing cases, ~$0.02-0.05/run
+	python -m evals.run_evals --subset
+
+ci-local:  ## what ci.yml gates on, runnable locally: lint, format check, tests, eval subset
+	ruff check .
+	ruff format --check .
+	pytest -ra tests/
+	python -m evals.run_evals --subset
 
 lint:
 	ruff check .

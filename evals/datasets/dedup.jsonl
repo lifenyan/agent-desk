@@ -1,0 +1,12 @@
+{"report": "Every time I try to log in through SSO it just bounces me straight back to the sign-in page. Can you report this?", "expect": "link", "group": "Accounts issue: SSO redirect fails"}
+{"report": "The corporate software update on my machine has been frozen at around 40% since this morning — please have someone look at it.", "expect": "link", "group": "Software issue: update stuck"}
+{"report": "The office wifi keeps dropping every few minutes for everyone sitting around me today. Can you report this?", "expect": "link", "group": "Network issue: Wi-Fi keeps dropping"}
+{"report": "Internal sites won't load for me — the browser says the server name can't be found, and colleagues nearby have the same problem. Please raise it.", "expect": "link", "group": ["Network issue: DNS not resolving", "Network issue: can't reach internal site"]}
+{"report": "The MFA push notification keeps looping forever and never accepts my approval, so I can't finish signing in. Please report it.", "expect": "link", "group": "Accounts issue: MFA prompt loop"}
+{"report": "Emails from clients outside the company are not reaching my inbox at all, internal mail works fine. Please raise this with IT.", "expect": "link", "group": "Email issue: not receiving external mail"}
+{"report": "My wireless mouse eats through a fresh pair of batteries every couple of days — something must be wrong with it. Please file a ticket.", "expect": "new", "trap_neighbor": "Hardware issue: battery drains fast"}
+{"report": "The software update finished on my machine but the app now crashes immediately on startup. Please open a ticket.", "expect": "new", "trap_neighbor": "Software issue: update stuck"}
+{"report": "SSO login itself works, but after signing in I get 'permission denied' when opening the finance dashboard. Please report it.", "expect": "new", "trap_neighbor": "Accounts issue: SSO redirect fails"}
+{"report": "My USB-C hub's HDMI port stopped outputting video — the laptop still detects the hub and USB devices work. Please file this.", "expect": "new", "trap_neighbor": "Hardware issue: docking station not detected"}
+{"report": "Calendar events show up fine on my phone but every reminder fires exactly one hour late. Can you open a ticket?", "expect": "new", "trap_neighbor": "Email issue: calendar not syncing"}
+{"report": "The shared printer prints fine but every page comes out with a gray streak down the middle. Please report it to IT.", "expect": "new", "trap_neighbor": "Nothing prints from the shared printer"}
