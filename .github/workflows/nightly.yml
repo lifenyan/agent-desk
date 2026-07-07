@@ -1,7 +1,8 @@
-# Nightly full-suite eval run (M4): retrieval + routing (all 30) + e2e (through a live uvicorn
-# the e2e suite spawns itself) + dedup — the suites too slow/expensive for every PR (ADR-026).
-# workflow_dispatch is the dry-run/on-demand path. Failures notify via GitHub's default
-# workflow-failure email — deliberately no extra notification infra.
+# Nightly full-suite eval run (M4; M5 added the quality suite): retrieval (40) + routing
+# (all 30) + e2e (18 flows through a live uvicorn the e2e suite spawns itself) + dedup +
+# quality (LLM-as-judge, gpt-5 — ADR-033) — the suites too slow/expensive for every PR
+# (ADR-026). workflow_dispatch is the dry-run/on-demand path. Failures notify via GitHub's
+# default workflow-failure email — deliberately no extra notification infra.
 name: Nightly evals
 
 on:
@@ -16,9 +17,11 @@ concurrency:
 jobs:
   evals:
     runs-on: ubuntu-latest
-    # Generous: e2e wall time is dominated by LLM API latency and was measured varying
-    # 5–35 min for the same 6 flows (each HTTP call is individually capped at 240 s).
-    timeout-minutes: 60
+    # Generous: wall time is dominated by LLM API latency. The M5 full run (all five suites,
+    # 18-flow e2e) measured 37 min locally; the M4-era 6-flow e2e alone varied 5–35 min in CI
+    # (each HTTP call individually capped at 240 s), so a 2× CI-latency day on ~34 min of
+    # LLM-bound suites needs headroom past the old 60.
+    timeout-minutes: 90
 
     services:
       postgres:
@@ -77,9 +80,10 @@ jobs:
           python scripts/seed_db.py
           python -m app.rag.ingest
 
-      # All four suites (no --suite flag = everything). The e2e suite spawns its own uvicorn
-      # on :8123 in this job's process group and asserts side effects through the real HTTP
-      # contract; the full metrics table lands in the job summary.
+      # All five suites (no --suite flag = everything, quality included). The e2e suite spawns
+      # its own uvicorn on :8123 in this job's process group and asserts side effects through
+      # the real HTTP contract; the full metrics table (incl. per-suite cost + latency
+      # p50/p95) lands in the job summary.
       - name: Full eval suite
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

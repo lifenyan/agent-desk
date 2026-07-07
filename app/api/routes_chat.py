@@ -1,38 +1,37 @@
 """POST /chat — load session + user facts, check semantic cache (read-only intents), then run the router agent."""
 # Implemented in M1 (router run + structured citations); M2 added multi-turn continuity via
-# session_id (ADR-019). M3 added the semantic-cache pre-check (ADR-023); M5 adds the Postgres
-# session backend + user-facts loading.
+# session_id (ADR-019). M3 added the semantic-cache pre-check (ADR-023); M5 swapped the session
+# backend to Postgres (ADR-030) and added the user-facts inject/extract hooks (ADR-031).
 
 from __future__ import annotations
 
 import asyncio
 import json
-from pathlib import Path
 from typing import Any
 
-from agents import Runner, SQLiteSession
-from fastapi import APIRouter
+from agents import Runner
+from agents.extensions.memory import SQLAlchemySession
+from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel, Field
 
 from app.agents.context import ChatContext
 from app.agents.router import router_agent
 from app.cache import semantic_cache
+from app.memory import extraction, user_facts
+from app.memory.session_store import get_session_store
 
 router = APIRouter(tags=["chat"])
 
-# Pre-M5 session stopgap (ADR-019): file-backed SQLite under the git-ignored scratch dir, so
-# the fulfillment confirm/HITL dialogue can span turns TODAY. This factory is the single swap
-# point — M5 replaces ONLY its body with the Postgres-backed store (app/memory/session_store.py)
-# and nothing else changes.
-_SESSION_DB = Path(__file__).resolve().parents[2] / "ignore" / "chat_sessions.sqlite3"
 
+def _load_session(session_id: str | None) -> SQLAlchemySession | None:
+    """Session handle for this conversation; None keeps the M1 one-shot behavior.
 
-def _load_session(session_id: str | None) -> SQLiteSession | None:
-    """Session handle for this conversation; None keeps the M1 one-shot behavior."""
+    This factory was the designed ADR-019 swap point: M2 shipped a file-backed SQLiteSession
+    stopgap here; M5 replaced ONLY this body with the Postgres-backed store (ADR-030), so a
+    conversation now survives API restarts and deploys."""
     if session_id is None:
         return None
-    _SESSION_DB.parent.mkdir(parents=True, exist_ok=True)
-    return SQLiteSession(session_id, _SESSION_DB)
+    return get_session_store(session_id)
 
 
 class ChatRequest(BaseModel):
@@ -89,7 +88,7 @@ def _collect_citations(items: list[Any]) -> list[Citation]:
     return sorted(by_article.values(), key=lambda c: c.rrf_score, reverse=True)
 
 
-async def _is_first_turn(session: SQLiteSession | None) -> bool:
+async def _is_first_turn(session: SQLAlchemySession | None) -> bool:
     """Semantic-cache session policy (ADR-023): only a conversation's FIRST message may be
     cache-served or cache-stored. A mid-conversation message ("yes, go ahead", "what about
     v5.2?") means whatever the history makes it mean — matching it against a stored standalone
@@ -98,13 +97,26 @@ async def _is_first_turn(session: SQLiteSession | None) -> bool:
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
+async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatResponse:
     session = _load_session(request.session_id)
+    first_turn = await _is_first_turn(session)
+
+    # Long-term memory (ADR-031). Inject half: on a conversation's FIRST turn the acting
+    # user's stored facts enter the session as ONE system item, so every later turn (and every
+    # agent the router hands off to) sees them without re-reading the table. Extract half:
+    # queued now, runs AFTER the response is sent (BackgroundTasks) on whichever branch below
+    # returns — a slow or failed extraction can never delay or break the reply.
+    if first_turn and session is not None and request.user_id:
+        facts_item = await asyncio.to_thread(user_facts.injection_message, request.user_id)
+        if facts_item is not None:
+            await session.add_items([facts_item])
+    background_tasks.add_task(
+        extraction.extract_and_store, request.user_id, request.message, request.session_id
+    )
 
     # Semantic-cache pre-check (ADR-023): BEFORE any agent runs. Only read-only (knowledge)
     # answers are ever STORED, so a hit can never re-play an order or a ticket. to_thread:
     # the lookup does sync Redis + (on non-empty cache) one embedding call.
-    first_turn = await _is_first_turn(session)
     if first_turn:
         hit = await asyncio.to_thread(semantic_cache.lookup, request.message)
         if hit is not None:

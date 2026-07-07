@@ -28,15 +28,24 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 
 from agents import Runner
 from sqlalchemy import select
 
 from app.agents.context import ChatContext
 from app.agents.incident import incident_agent
+from app.config import get_settings
 from app.db.database import SessionLocal
 from app.db.models import Ticket, TicketComment
-from evals.common import DATASET_DIR, EVAL_USER, FLOORS, load_jsonl
+from evals.common import (
+    DATASET_DIR,
+    EVAL_USER,
+    FLOORS,
+    cost_latency_aggregates,
+    load_jsonl,
+    usage_fields,
+)
 
 
 def _max_search_similarity(result) -> float | None:
@@ -67,13 +76,17 @@ async def _run_probe(case: dict) -> dict:
 
     top_similarity = None
     error = None
+    usage = {"cost_usd": None}
+    t0 = time.perf_counter()
     try:
         result = await Runner.run(
             incident_agent, case["report"], context=ChatContext(user_id=EVAL_USER)
         )
         top_similarity = _max_search_similarity(result)
+        usage = usage_fields(result, get_settings().specialist_model)
     except Exception as exc:  # noqa: BLE001 — a crashed run scores as a failed action
         error = f"{exc.__class__.__name__}: {exc}"
+    latency_s = round(time.perf_counter() - t0, 2)
 
     with SessionLocal() as s:
         new_ticket_ids = set(s.scalars(select(Ticket.id))) - before_tickets
@@ -117,6 +130,8 @@ async def _run_probe(case: dict) -> dict:
         "top_similarity": top_similarity,
         "ok": ok,
         "error": error,
+        "latency_s": latency_s,
+        **usage,
     }
 
 
@@ -142,5 +157,6 @@ def run_dedup(**_ignored) -> dict:
             "n_trap": len(traps),
         },
     }
+    report["cost_latency"] = cost_latency_aggregates(rows)
     report["passed"] = report["aggregates"]["accuracy"] >= FLOORS["dedup"]["accuracy"]
     return report
