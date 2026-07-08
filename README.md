@@ -29,7 +29,7 @@ Two external surfaces reuse those same layers (M8): a **Slack Socket Mode runner
 agentdesk/
 ├── README.md
 ├── CLAUDE.md                         # working brief + live status (auto-loaded by Claude Code)
-├── DECISIONS.md                      # architecture decision log (41 ADRs)
+├── DECISIONS.md                      # architecture decision log (45 ADRs)
 ├── DEPLOY.md                         # M1: manual Railway/Render deploy runbook (ADR-009)
 ├── SLACK_SETUP.md                    # M8: Slack app manifest, scopes, token setup (manual steps)
 ├── .gitignore
@@ -39,6 +39,7 @@ agentdesk/
 ├── Makefile                          # db-up · seed · reset · migrate · generate · test · lint
 ├── Dockerfile
 ├── docker-compose.yml                # app + ui + approvals + postgres(pgvector) + redis
+├── docker-compose.langfuse.yml       # M6: OPTIONAL local Langfuse stack (Cloud is the default, ADR-042)
 ├── .github/workflows/
 │   ├── ci.yml                        # M4: lint, tests, eval subset on PR
 │   ├── nightly.yml                   # M4: every eval suite (7 as of M8), nightly + on dispatch
@@ -86,13 +87,16 @@ agentdesk/
 │   │   │                             # catalog_items, orders, tickets, ticket_comments, user_facts
 │   │   └── migrations/               # env.py + versions/0001_initial, 0002_sessions, 0003_cmdb_graph
 │   └── observability/
-│       └── tracing.py                # Langfuse setup, cost/latency logging
+│       ├── tracing.py                # M6: Langfuse bridge — SDK trace processor, tags, cost budget (ADR-042/043/045)
+│       └── costs.py                  # M6: THE price table (evals + tracing import the same dict)
 ├── ui/
 │   ├── streamlit_app.py              # chat UI
 │   └── approval_view.py              # manager approval card for HITL
 ├── scripts/
 │   ├── generate_data.py              # M0: two-stage LLM dataset generator (cached to data/)
-│   └── seed_db.py                    # M0: load data/ into Postgres (idempotent upsert)
+│   ├── seed_db.py                    # M0: load data/ into Postgres (idempotent upsert)
+│   ├── export_metrics.py             # M6: headline numbers from Langfuse traces + cache counters
+│   └── ab_caching_report.py          # M6: caches ON-vs-OFF comparison from two --out JSONs (ADR-044)
 ├── evals/
 │   ├── datasets/
 │   │   ├── retrieval.jsonl           # 40 cases: query -> expected article ids (+ refusal probes)
@@ -111,7 +115,8 @@ agentdesk/
 │   ├── judge_prompt.md               # the committed judge rubric (verbatim instructions)
 │   ├── thresholds.toml               # eval floors — single source of truth (ADR-026)
 │   ├── results/baseline.json         # committed full-run baseline (per-case cost/latency)
-│   ├── common.py                     # dataset loading, floors, price table, cost/latency helpers
+│   ├── common.py                     # dataset loading, floors, cost/latency helpers, trace-id hook (M6)
+│   ├── langfuse_datasets.py          # M6: eval cases -> Langfuse datasets, runs linked to traces
 │   └── metrics.py                    # recall@k, MRR, percentile
 ├── tests/
 │   ├── conftest.py
@@ -123,7 +128,8 @@ agentdesk/
 │   ├── test_memory.py                # M5: session store, fact merge rule, injection plumbing
 │   ├── test_slack.py                 # M8: runner — triggers, envelope, fail-closed identity, re-submit
 │   ├── test_guardrails.py            # M8: injection-screen gating + tripwire plumbing (LLM-free)
-│   └── test_mcp.py                   # M8: MCP tool surface, token map, identity threading
+│   ├── test_mcp.py                   # M8: MCP tool surface, token map, identity threading
+│   └── test_observability.py         # M6: no-op contract, tag/cost aggregation, cost budget, A/B seam
 ├── data/                             # M0: generated dataset (cached JSON) + taxonomy — rebuild via `make seed`
 ├── design/                           # DATA_DICTIONARY.md · database_erd.png · architecture diagrams
 ├── ignore/                           # git-ignored local scratch / notes
@@ -151,14 +157,95 @@ the pass/fail floors — regression gates set below observed run-to-run variance
 | **graph** | 15 × 3 arms | plain RAG F1 **0.44–0.64** vs Graph-RAG (CTE and Neo4j) **1.000**, 45/45 exact sets — see the comparison section below² | $0.15 | 10.3 s / 21.5 s |
 | **slack** | 5 fixtures | recorded Slack threads through the real ingestion path: **5/5 · 4/5 · 5/5** across the three M8 baseline runs (floor 0.75); the injection-trap and identity-fallback cases passed **every** run³ | n/a¹ | 32.5 s / 47.5 s |
 
-¹ e2e conversations bill inside the suite-spawned server, invisible to the HTTP client — that
-cost gap is closed by the M6 Langfuse wiring.
+¹ e2e conversations bill inside the suite-spawned server, invisible to the HTTP client —
+closed in M6: per-flow cost is read from the flows' Langfuse traces (see "Observability &
+metrics" below).
 ² graph numbers are the M9 three-run baseline (2026-07-07), not part of the committed M5
 `baseline.json` full run. All agentic metrics vary run to run (that's
 LLMs); the floors gate regressions, not perfection.
 ³ slack numbers are the M8 final-code baseline (2026-07-07; evidence in `ignore/tem/`): the
 two observed misses are the system's known variable modes (the ADR-028 dedup gray band and
 the residual ADR-022 empty-final burp), not Slack-specific failures.
+
+## Observability & metrics (M6)
+
+Every agent run is traced to **Langfuse** via a custom Agents SDK trace processor
+(`app/observability/tracing.py`, ADR-042/043): router handoffs, specialist spans, tool calls,
+guardrail verdicts, per-call tokens and cost (priced from the one committed table in
+`app/observability/costs.py` — the same dict the eval harness uses, so the two can never
+disagree by drift). Traces carry population-separating tags (`source`, `intent`, `agent`,
+`cache_hit`, `flagged`); conversations group by session id; semantic-cache hits emit their own
+cheap trace instead of vanishing from the stats. With no Langfuse keys configured the whole
+layer is a verified no-op (CI runs keyless and green). Langfuse Cloud is the recommended
+backend; `docker compose -f docker-compose.langfuse.yml up -d` is the keyless local
+alternative (UI on :3000). The retrieval and routing eval suites also publish to Langfuse
+datasets on every run, each case linked to its exact trace.
+
+### Headline numbers
+
+Measured 2026-07-08 against a local Langfuse over one PR-gate eval run + one caching A/B
+(2× retrieval+e2e) + manual chat traffic — 61 `chat` traces
+(`make metrics` regenerates this table live):
+
+| metric | value |
+|---|---|
+| chat latency p50/p95 — semantic-cache **hit** | **0.07 s / 0.08 s** (n=3) |
+| chat latency p50/p95 — cache miss (agents ran) | 23.6 s / 36.8 s (n=58) |
+| per specialist p50/p95 — knowledge | 22.9 s / 33.2 s (n=26) |
+| per specialist p50/p95 — fulfillment | 20.3 s / 32.2 s (n=14) |
+| per specialist p50/p95 — incident | 31.8 s / 42.2 s (n=17) |
+| tokens per conversation p50/p95 | 14.6k / 73.9k (49 conversations) |
+| cost per conversation p50/p95 | **$0.0076 / $0.0254** |
+| cost per resolved request (mean) | $0.0079 (flagged runs excluded) |
+| handoff-count distribution | 1 hop × 56 · 0 hops × 4 (cache hits + a guardrail flag) · 3 hops × 1 |
+| cache hit rates (lifetime counters, `GET /cache/stats`) | embedding **84.7%** · semantic 14.7% · response 76.7% |
+
+Note the units: a *trace* is one chat turn; the e2e suite's per-flow latencies below are
+whole multi-turn conversations — the numbers are consistent, not contradictory. The
+harness-vs-Langfuse **cross-check** (the ADR-034 debt): all 20 billed cases of a subset run
+joined by trace id — harness **$0.0974** vs Langfuse **$0.0974**, worst per-case delta
+$0.0000005 (pure rounding; both sides are SDK tokens × the same table, so agreement is by
+construction — a disagreement would have meant a plumbing bug). Per-case cost also matches
+the committed M5 `baseline.json` magnitudes (routing ≈ $0.0066/case vs baseline $0.0065).
+
+### Caching A/B (ADR-044)
+
+Same command, two arms: caches on vs `CACHES_DISABLED=1` (a deliberate flag in all three
+caches — not a simulated Redis outage). Slice: retrieval + e2e, the only suites that can hit
+the caches (the others call agents directly, bypassing routes_chat by design). One run per
+arm, 2026-07-08; per-flow table via `scripts/ab_caching_report.py`.
+
+| measurement | caches ON | caches OFF | delta |
+|---|---|---|---|
+| `knowledge_cache` flow (a question, then a fresh-session **paraphrase**) | 21.7 s | 48.9 s | **-56% latency** — the paraphrase is served from the semantic cache in ~0.1 s instead of re-running the agent (~20 s) |
+| retrieval answerable-case p50 (pure embedding path) | 0.01 s | 0.25 s | **~25× — the embedding cache** |
+| e2e case latency p50 / p95 | 34.2 s / 57.3 s | 41.9 s / 72.0 s | -18% / -20% blended |
+| chat-trace LLM spend over the e2e window (from Langfuse — the harness can't see inside the spawned server) | $0.224 | $0.259 | -13% |
+
+**The honest read:** the caching win is real but *concentrated*. The semantic cache only
+fires on paraphrase repeats, so the flow built around a repeat shows the dramatic number
+(-56% latency; the avoided second knowledge run is the directly attributable ~$0.005 of the
+cost delta) — while flows that never repeat a question sit inside the ±30% run-to-run LLM
+latency noise band (several OFF flows were *faster*; caches cannot cause that). The blended
+-18%/-13% numbers lean on the knowledge flows and should be quoted with that caveat, which is
+why the report is per-flow. As predicted, the OFF arm **fails** the `knowledge_cache` flow's
+`cached=true` assertion — that assertion is the mechanism under test, and its failure under
+the flag is the flag working.
+
+**Flagged for investigation, not smoothed over:** (1) `multi_intent` failed in *both* arms
+this day ("incident half acted" — the incident agent handled the second intent without
+creating the row); it was 18/18 in the M5 baseline and the post-merge nightly, so this is
+either the known gray-band variance or a drift worth watching in the next nightlies.
+(2) The OFF arm also dropped `incident_create` (0 tickets — the "lost report" mode from the
+first nightly dry-run) and `refusal_to_ticket`; neither touches a cache, and the OFF arm ran
+at visibly higher API latency (p95 72 s), consistent with provider-side variance rather than
+a caching effect — but 3 non-cache failures in one run is above the historical rate.
+
+There is deliberately **no fourth dashboard service**: Langfuse's own UI is the dashboard
+(traces, sessions, costs, datasets); `make metrics` prints the table above for terminals and
+this README. The per-conversation **cost budget alert** (ADR-045, `COST_ALERT_THRESHOLD_USD`,
+default $0.10) accumulates spend per session in Redis and, on crossing, logs a loud warning
+and attaches a WARNING event to the crossing trace.
 
 ## Plain RAG vs Graph-RAG on multi-hop questions
 
@@ -276,7 +363,15 @@ default — CI and the eval suite use recorded thread fixtures, never a live wor
 | M3 | Caching | Semantic cache + response cache (embedding cache landed in M1) | ✅ done |
 | M4 | CI & evals | Routing + e2e + dedup eval suites, floors in `thresholds.toml`, CI subset gate, nightly workflow | ✅ done |
 | M5 | Memory + full eval harness | SDK sessions in Postgres, `user_facts` inject/extract, quality suite (LLM-as-judge), per-case cost/latency, committed baseline | ✅ done |
-| M6 | Observability | Langfuse traces, dashboards; cross-check harness cost/latency | |
-| M7 | AWS migration | Move off the Railway plan onto AWS (first deploy still manual per ADR-009) | |
+| M6 | Observability | Langfuse tracing (Agents SDK trace processor), tagged traces + eval datasets, caching A/B, cost budget alert | ✅ done |
+| ~~M7~~ | ~~AWS migration~~ | ~~Move off the Railway plan onto AWS~~ — **dropped** (cut for time; the PaaS runbook in [`DEPLOY.md`](DEPLOY.md) is the deployment story) | ✂️ dropped |
 | M8 | MCP + Slack + guardrails | MCP server (bearer-token auth, Claude Desktop), Slack Socket Mode ingestion with in-thread replies, injection guardrail + adversarial eval | ✅ done |
 | M9 | Graph-RAG | CMDB dependency graph (Postgres CTE + optional Neo4j), graph tool, three-way RAG comparison | ✅ done |
+
+**Status: complete.** M6 was the final milestone. A finished project states its cut lines —
+deliberately NOT done: the AWS migration (M7, dropped — Railway/Render per `DEPLOY.md` is the
+deployment story and the deploy itself is user-executed, ADR-009/029); auth on the approvals
+UI (anyone who reaches `:8502` is a "manager" — fine for a local demo, stated so nobody
+mistakes it for a product decision); multi-user MCP auth beyond the static token map
+(ADR-039/040); tracing on the MCP server (a separate agent-less process — ADR-042); and a
+live public deployment unless/until the owner runs the `DEPLOY.md` runbook.

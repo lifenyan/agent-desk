@@ -6,8 +6,10 @@ run state to resume: approving completes the order's placement through the same 
 catalog_tools DB path the agent tools use (ADR-004), rejecting cancels it. Approval authority
 stays human-only: approve/reject are deliberately not agent tools.
 
-Auth is out of scope until M7 guardrails — anyone who can reach the API is a "manager" (the
-approval_view UI is the demo surface).
+Auth is deliberately out of scope — a stated cut line of the finished project (README
+"Status: complete"): anyone who can reach the API is a "manager" (the approval_view UI is
+the demo surface). The real safety boundary is that approval authority is human-only and
+tool-less by design (ADR-005/020).
 """
 # Implemented in M2.
 

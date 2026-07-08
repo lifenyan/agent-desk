@@ -41,6 +41,9 @@ is the deployment story.)
        needs the `+psycopg` driver marker).
      - `REDIS_URL` = reference the Redis service's `REDIS_URL`.
      - `OPENAI_API_KEY` = your key.
+     - Optional (M6 tracing): `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` (+ `LANGFUSE_HOST`
+       for a non-EU region). Leave unset and the app runs untraced — empty keys are a clean
+       no-op by contract (ADR-042).
    - Settings → Networking: expose the service, target port **8000**.
 5. **Seed + ingest (one-time, in this order)** — Railway service → ⋯ → "Shell" (or
    `railway ssh` with the CLI):

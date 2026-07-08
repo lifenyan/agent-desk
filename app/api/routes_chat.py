@@ -12,6 +12,7 @@ from typing import Any, Literal
 
 from agents import InputGuardrailTripwireTriggered, Runner
 from agents.extensions.memory import SQLAlchemySession
+from agents.tracing import custom_span, trace
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -113,6 +114,18 @@ async def _is_first_turn(session: SQLAlchemySession | None) -> bool:
     return session is None or not await session.get_items(limit=1)
 
 
+def _trace_metadata(request: ChatRequest, *, cache_hit: bool) -> dict:
+    """Trace tags/joins the Langfuse bridge aggregates on (M6, ADR-043). `source` keeps the
+    M8 populations separable (Slack runs carry an extra screening call and skip the caches —
+    blending them corrupts every latency/cost split); `input` is a preview, not the payload."""
+    return {
+        "source": request.source,
+        "user": request.user_id or "",
+        "cache_hit": "true" if cache_hit else "false",
+        "input": request.message[:300],
+    }
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatResponse:
     session = _load_session(request.session_id)
@@ -134,74 +147,87 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatR
             extraction.extract_and_store, request.user_id, request.message, request.session_id
         )
 
-    # Semantic-cache pre-check (ADR-023): BEFORE any agent runs. Only read-only (knowledge)
-    # answers are ever STORED, so a hit can never re-play an order or a ticket. to_thread:
-    # the lookup does sync Redis + (on non-empty cache) one embedding call.
-    # Chat-source only (ADR-039): a Slack report exists to become a ticket — serving it a
-    # stored knowledge ANSWER (however similar the text) would silently drop the report.
-    if first_turn and request.source == "chat":
-        hit = await asyncio.to_thread(semantic_cache.lookup, request.message)
-        if hit is not None:
-            if session is not None:
-                # Keep the conversation coherent if the user keeps talking: the session must
-                # contain the turn we just short-circuited.
-                await session.add_items(
-                    [
-                        {"role": "user", "content": request.message},
-                        {"role": "assistant", "content": hit.answer},
-                    ]
+    # M6 (ADR-043): ONE trace around everything user-facing in this turn — the cache lookup,
+    # the agent run (Runner.run joins the ambient trace instead of opening its own), and the
+    # cache store — so the trace's latency is the handler's real end-to-end time on BOTH the
+    # hit and miss paths. A cache hit would otherwise emit no trace at all, silently deleting
+    # the fast/cheap population from every latency/cost split. `metadata` is read by the
+    # bridge at trace END, so flipping cache_hit after the lookup is safe by design.
+    trace_meta = _trace_metadata(request, cache_hit=False)
+    with trace("chat", group_id=request.session_id, metadata=trace_meta):
+        # Semantic-cache pre-check (ADR-023): BEFORE any agent runs. Only read-only (knowledge)
+        # answers are ever STORED, so a hit can never re-play an order or a ticket. to_thread:
+        # the lookup does sync Redis + (on non-empty cache) one embedding call.
+        # Chat-source only (ADR-039): a Slack report exists to become a ticket — serving it a
+        # stored knowledge ANSWER (however similar the text) would silently drop the report.
+        if first_turn and request.source == "chat":
+            hit = await asyncio.to_thread(semantic_cache.lookup, request.message)
+            if hit is not None:
+                trace_meta["cache_hit"] = "true"
+                with custom_span(
+                    "semantic_cache_hit", data={"similarity": round(hit.similarity, 4)}
+                ):
+                    if session is not None:
+                        # Keep the conversation coherent if the user keeps talking: the session
+                        # must contain the turn we just short-circuited.
+                        await session.add_items(
+                            [
+                                {"role": "user", "content": request.message},
+                                {"role": "assistant", "content": hit.answer},
+                            ]
+                        )
+                return ChatResponse(
+                    answer=hit.answer,
+                    agent="knowledge",  # entries are only ever written from knowledge runs
+                    citations=[Citation(**c) for c in hit.citations],  # stored, NOT re-collected
+                    cached=True,
                 )
-            return ChatResponse(
-                answer=hit.answer,
-                agent="knowledge",  # entries are only ever written from knowledge runs
-                citations=[Citation(**c) for c in hit.citations],  # stored; NOT _collect_citations
-                cached=True,
+
+        try:
+            result = await Runner.run(
+                router_agent,
+                request.message,
+                context=ChatContext(
+                    user_id=request.user_id,
+                    source=request.source,
+                    slack_channel=request.slack_channel,
+                    slack_thread_ts=request.slack_thread_ts,
+                    injection_screened=request.injection_screened,
+                ),
+                session=session,
             )
+        except InputGuardrailTripwireTriggered as exc:
+            # M8 injection screen (ADR-041): the run was halted BEFORE any agent acted. Not an
+            # HTTP error — the flag is a first-class outcome the Slack runner reacts to (one
+            # re-submit with injection_screened=True and a security preamble). The bridge tags
+            # the trace flagged:true from the guardrail span itself.
+            verdict = getattr(exc.guardrail_result.output, "output_info", None)
+            evidence = getattr(verdict, "evidence", "") or ""
+            return ChatResponse(
+                answer=(
+                    "Input flagged by the injection screen; no agent ran. "
+                    f"Evidence: {evidence or 'n/a'}"
+                ),
+                agent="guardrail",
+                citations=[],
+                flagged=True,
+            )
+        answer = str(result.final_output)
+        citations = _collect_citations(result.new_items)
 
-    try:
-        result = await Runner.run(
-            router_agent,
-            request.message,
-            context=ChatContext(
-                user_id=request.user_id,
-                source=request.source,
-                slack_channel=request.slack_channel,
-                slack_thread_ts=request.slack_thread_ts,
-                injection_screened=request.injection_screened,
-            ),
-            session=session,
-        )
-    except InputGuardrailTripwireTriggered as exc:
-        # M8 injection screen (ADR-041): the run was halted BEFORE any agent acted. Not an
-        # HTTP error — the flag is a first-class outcome the Slack runner reacts to (one
-        # re-submit with injection_screened=True and a security preamble).
-        verdict = getattr(exc.guardrail_result.output, "output_info", None)
-        evidence = getattr(verdict, "evidence", "") or ""
-        return ChatResponse(
-            answer=(
-                "Input flagged by the injection screen; no agent ran. "
-                f"Evidence: {evidence or 'n/a'}"
-            ),
-            agent="guardrail",
-            citations=[],
-            flagged=True,
-        )
-    answer = str(result.final_output)
-    citations = _collect_citations(result.new_items)
+        # Write side of the read-only guarantee: knowledge answers with evidence only (never
+        # fulfillment/incident, never refusals) — and only first-turn ones, symmetric with
+        # lookup. Source-gated like the lookup (M8): a misrouted Slack envelope answered by
+        # the knowledge agent must not become a cache entry keyed on envelope text.
+        citation_dicts = [c.model_dump() for c in citations]
+        if (
+            first_turn
+            and request.source == "chat"
+            and semantic_cache.is_cacheable(result.last_agent.name, answer, citation_dicts)
+        ):
+            await asyncio.to_thread(semantic_cache.store, request.message, answer, citation_dicts)
 
-    # Write side of the read-only guarantee: knowledge answers with evidence only (never
-    # fulfillment/incident, never refusals) — and only first-turn ones, symmetric with lookup.
-    # Source-gated like the lookup (M8): a misrouted Slack envelope answered by the knowledge
-    # agent must not become a cache entry keyed on envelope text.
-    citation_dicts = [c.model_dump() for c in citations]
-    if (
-        first_turn
-        and request.source == "chat"
-        and semantic_cache.is_cacheable(result.last_agent.name, answer, citation_dicts)
-    ):
-        await asyncio.to_thread(semantic_cache.store, request.message, answer, citation_dicts)
-
-    return ChatResponse(answer=answer, agent=result.last_agent.name, citations=citations)
+        return ChatResponse(answer=answer, agent=result.last_agent.name, citations=citations)
 
 
 class IdentityResolveResponse(BaseModel):

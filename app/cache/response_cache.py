@@ -47,6 +47,9 @@ def cache_response(key_fn: Callable[..., str | None], ttl_seconds: int | None = 
     def decorator(fn: Callable[..., dict]) -> Callable[..., dict]:
         @functools.wraps(fn)
         def wrapper(*args, **kwargs) -> dict:
+            # A/B seam (M6, ADR-044): deliberate off — straight through, no stats, no noise.
+            if get_settings().caches_disabled:
+                return fn(*args, **kwargs)
             suffix = key_fn(*args, **kwargs)
             if suffix is None:
                 return fn(*args, **kwargs)

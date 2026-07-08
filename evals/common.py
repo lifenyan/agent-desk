@@ -5,11 +5,14 @@ them here and CI runs the same harness, so there is no second copy of the number
 
 M5 added per-case cost + latency (ADR-034): every suite row carries wall-clock latency_s and,
 where the case is an SDK run, token counts + cost from the run's Usage. Cost is tokens ×
-the committed price table below — the SDK reports tokens, never dollars. This is the number
-M6 will cross-check against Langfuse traces.
+the committed price table — the SDK reports tokens, never dollars. M6 moved that table to
+app/observability/costs.py (re-exported here unchanged) so the Langfuse trace bridge and the
+harness price tokens from the SAME numbers, and added the per-case trace-id hook
+(`eval_run_config`) that makes each eval case's SDK trace findable in Langfuse.
 """
 # Implemented in M4 (extracted from run_evals.py so the e2e/dedup suite modules can share it
-# without importing the CLI module). M5 added the price table + usage/latency helpers.
+# without importing the CLI module). M5 added the price table + usage/latency helpers; M6
+# relocated the table (ADR-042) and added eval_run_config (ADR-043).
 
 from __future__ import annotations
 
@@ -17,19 +20,29 @@ import json
 import tomllib
 from pathlib import Path
 
+from agents import RunConfig
+from agents.tracing import gen_trace_id
+
+from app.observability.costs import PRICES_PER_MTOK as PRICES_PER_MTOK  # noqa: PLC0414 — re-export
+
 DATASET_DIR = Path(__file__).parent / "datasets"
 
 # Suites that exercise ACTION agents (routing, e2e, dedup) act as this (seeded) user.
 EVAL_USER = "demo.user@corp.com"
 
-# USD per 1M tokens (input, output) — checked 2026-07-07 against the OpenAI pricing page.
-# Only the models the harness actually bills: the pinned workhorse pair (ADR-026) + the judge
-# (ADR-033). A model missing here makes cost None rather than silently $0.
-PRICES_PER_MTOK: dict[str, tuple[float, float]] = {
-    "gpt-5-mini": (0.25, 2.00),
-    "gpt-5": (1.25, 10.00),
-    "text-embedding-3-small": (0.02, 0.0),
-}
+
+def eval_run_config(suite: str, case_ref: str) -> tuple[str, RunConfig]:
+    """Per-case trace-id hook (M6, ADR-043): mint the trace id BEFORE the run so the row can
+    record it, and return the RunConfig that pins the run's trace to it. The recorded id (the
+    32-hex part) IS the Langfuse trace id — the join key for dataset runs and cost queries.
+    Costs nothing when tracing is off: ids are local, RunConfig is plain data."""
+    trace_id = gen_trace_id()
+    run_config = RunConfig(
+        workflow_name=f"eval-{suite}",
+        trace_id=trace_id,
+        trace_metadata={"source": "eval", "suite": suite, "case": case_ref[:200]},
+    )
+    return trace_id.removeprefix("trace_"), run_config
 
 
 def load_jsonl(path: Path) -> list[dict]:

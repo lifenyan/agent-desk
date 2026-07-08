@@ -73,15 +73,18 @@ from app.agents.router import router_agent  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.db.database import SessionLocal  # noqa: E402
 from app.db.models import Order, Ticket, TicketComment  # noqa: E402
+from app.observability import tracing  # noqa: E402
 from app.rag.hybrid_search import hybrid_search, top_cosine  # noqa: E402
 from evals.common import (  # noqa: E402
     DATASET_DIR,
     EVAL_USER,
     FLOORS,
     cost_latency_aggregates,
+    eval_run_config,
     load_jsonl as _load_jsonl,
     usage_fields,
 )
+from evals.langfuse_datasets import record_dataset_run  # noqa: E402
 from evals.metrics import dedupe_preserving_order, mrr, recall_at_k  # noqa: E402
 from evals.suite_dedup import run_dedup  # noqa: E402
 from evals.suite_e2e import run_e2e  # noqa: E402
@@ -104,9 +107,13 @@ def _agent_refused(answer: str) -> bool:
 
 
 async def _run_refusal_case(query: str) -> tuple[bool, str, dict]:
-    result = await Runner.run(knowledge_agent, query, context=ChatContext())
+    # M6 (ADR-043): pin the trace id so the row records where in Langfuse this case lives.
+    trace_id, run_config = eval_run_config("retrieval", query)
+    result = await Runner.run(knowledge_agent, query, context=ChatContext(), run_config=run_config)
     answer = str(result.final_output)
-    return _agent_refused(answer), answer, usage_fields(result, get_settings().specialist_model)
+    fields = usage_fields(result, get_settings().specialist_model)
+    fields["trace_id"] = trace_id
+    return _agent_refused(answer), answer, fields
 
 
 def run_retrieval(
@@ -218,9 +225,13 @@ def _run_trace(result) -> tuple[list[str], list[str]]:
 
 async def _routing_case(case: dict) -> dict:
     t0 = time.perf_counter()
+    trace_id, run_config = eval_run_config("routing", case["query"])  # M6, ADR-043
     try:
         result = await Runner.run(
-            router_agent, case["query"], context=ChatContext(user_id=EVAL_USER)
+            router_agent,
+            case["query"],
+            context=ChatContext(user_id=EVAL_USER),
+            run_config=run_config,
         )
     except Exception as exc:  # noqa: BLE001 — a crashed run is an integrity failure, not a crash
         return {
@@ -234,6 +245,7 @@ async def _routing_case(case: dict) -> dict:
             "tools": [],
             "latency_s": round(time.perf_counter() - t0, 2),
             "cost_usd": None,
+            "trace_id": trace_id,
         }
     handoffs, tools = _run_trace(result)
     return {
@@ -249,6 +261,7 @@ async def _routing_case(case: dict) -> dict:
         "tools": tools,
         "latency_s": round(time.perf_counter() - t0, 2),
         **usage_fields(result, get_settings().specialist_model),
+        "trace_id": trace_id,
     }
 
 
@@ -820,6 +833,11 @@ def main() -> int:
         _sweep(*args.sweep)
         return 0
 
+    # M6 (ADR-042/043): with Langfuse keys set, every SDK run below is traced and the wired
+    # suites become comparable dataset runs; without keys this is a logged one-line no-op.
+    traced = tracing.init_tracing()
+    run_name = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     suite_names = list(SUBSET_SUITES) if args.subset else (args.suite or list(SUITES))
     ok = True
     reports = []
@@ -849,6 +867,12 @@ def main() -> int:
             f"\nsubset cost: {routing_n} routing agent runs + {refusal_n} refusal agent runs "
             f"(gpt-5-mini) + ~40 query embeddings — measured ${measured:.4f} this run"
         )
+
+    if traced:
+        for report in reports:
+            if report["suite"] in ("retrieval", "routing"):
+                record_dataset_run(report["suite"], report["rows"], run_name=run_name)
+        tracing.flush()  # short-lived process: drain the background exporter before exiting
 
     _write_github_summary(reports)
     if args.out:
