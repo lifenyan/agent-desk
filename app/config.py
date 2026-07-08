@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     chat_api_url: str = "http://localhost:8000"
 
     # --- MCP server (M8) ---
+    mcp_host: str = "127.0.0.1"  # loopback for local dev; a deployed service sets 0.0.0.0
     mcp_port: int = 8090
     # Static bearer-token → acting-user map: "token=email[,token=email…]". Full multi-user
     # auth (OAuth, token issuance/rotation) is deliberately out of scope — see ADR-039.

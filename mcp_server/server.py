@@ -84,7 +84,7 @@ mcp = FastMCP(
         "IT service desk tools: search the knowledge base, browse the catalog, and create or "
         "check support tickets. Tickets are created for the user your token maps to."
     ),
-    host="127.0.0.1",
+    host=settings.mcp_host,  # loopback locally; MCP_HOST=0.0.0.0 when deployed (DEPLOY.md)
     port=settings.mcp_port,
     stateless_http=True,  # per-request auth: each call carries (and is verified by) its token
     token_verifier=StaticTokenVerifier(parse_token_map(settings.mcp_tokens)),
