@@ -1,0 +1,125 @@
+<!-- Source for agent_handoff_workflow.png (M6 closeout refresh — the Jul 3 sketch predated
+     every milestone). Render:
+       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+         --screenshot=design/agent_handoff_workflow.png --window-size=1360,1020 \
+         --force-device-scale-factor=2 --hide-scrollbars --default-background-color=FFFFFFFF \
+         file://$PWD/design/agent_handoff_workflow.html
+     What it must stay true to (the test-pinned graph, ADR-003/017/020/022/023/041):
+     router renamed from "triage" · semantic-cache short-circuit before any agent ·
+     knowledge→incident edge + specialist→router back-edges · slack-gated injection screen. -->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: #ffffff;
+         font-family: "Anthropic Sans", -apple-system, "Helvetica Neue", sans-serif; }
+  #canvas { position: relative; width: 1360px; height: 1020px; }
+  svg#wires { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .node { position: absolute; box-sizing: border-box; z-index: 1; border-radius: 14px;
+          border: 1.5px solid; padding: 14px 20px; text-align: center;
+          display: flex; flex-direction: column; justify-content: center; }
+  .node b { font-size: 21px; letter-spacing: -0.01em; }
+  .node span { font-size: 14.5px; line-height: 1.35; margin-top: 4px; }
+  .neutral { background: #f4f3ee; border-color: #d9d8d3; }
+  .neutral b { color: #3d3d3a; } .neutral span { color: #73726c; }
+  .accent  { background: #fbeee7; border-color: #cf8a68; }
+  .accent b { color: #8a2f14; } .accent span { color: #b3542e; }
+  .purple  { background: #ececfb; border-color: #9d9df0; }
+  .purple b { color: #3b3ba3; } .purple span { color: #5b5bc9; }
+</style>
+
+<div id="canvas">
+  <svg id="wires"></svg>
+
+  <div class="node neutral" id="user"  style="left:150px;  top:30px;  width:320px; height:86px;">
+    <b>User query</b><span>chat UI / POST /chat</span></div>
+  <div class="node neutral" id="slack" style="left:880px; top:30px;  width:360px; height:86px;">
+    <b>Slack thread report</b><span>Socket Mode runner → POST /chat · source=slack<br>skips caches &amp; memory (M8)</span></div>
+
+  <div class="node neutral" id="cache" style="left:110px;  top:196px; width:400px; height:96px;">
+    <b>Semantic cache lookup</b><span>first turn, chat only (ADR-023) ·<br>user facts injected into the session (M5)</span></div>
+
+  <div class="node accent" id="router" style="left:520px; top:330px; width:380px; height:96px;">
+    <b>Router agent</b><span>tool-less · classify intent + hand off ·<br>tool_choice="required", never resets (ADR-018/022)</span></div>
+  <div class="node accent" id="guard" style="left:1010px; top:330px; width:310px; height:96px;">
+    <b>Injection screen</b><span>Slack source only (ADR-041) · tripwire ⇒<br>flagged, no agent — runner refiles once</span></div>
+
+  <div class="node purple" id="knowledge" style="left:160px; top:560px; width:360px; height:110px;">
+    <b>Knowledge agent</b><span>hybrid RAG: pgvector + FTS, RRF · citations ·<br>two-stage refusal cascade (ADR-017)</span></div>
+  <div class="node purple" id="fulfillment" style="left:550px; top:560px; width:380px; height:110px;">
+    <b>Fulfillment agent</b><span>assets · pre-filled catalog orders ·<br>&gt; $500 → human approval, run ends (ADR-020)</span></div>
+  <div class="node purple" id="incident" style="left:960px; top:560px; width:370px; height:110px;">
+    <b>Incident agent</b><span>dedup via ticket embeddings (ADR-021) · create/link ·<br>blast-radius graph (M9) · Slack reply (M8)</span></div>
+
+  <div class="node neutral" id="response" style="left:440px; top:830px; width:540px; height:110px;">
+    <b>Response</b><span>answer + citations · traced to Langfuse (M6) ·<br>knowledge answers cached at write time · facts extracted post-response (background)</span></div>
+</div>
+
+<script>
+const edges = [
+  { from: "user",        to: "cache",       label: "" },
+  { from: "slack",       to: "router",      label: "" },
+  { from: "cache",       to: "router",      label: "miss" },
+  { from: "cache",       to: "response",    fromSide: "left", toSide: "left",
+    bend: 230, dash: true, labelT: 0.82, label: "hit — cached answer, no agent (~0.1 s)" },
+  { from: "router",      to: "guard",       fromSide: "right", toSide: "left", dash: true, label: "" },
+  { from: "router",      to: "knowledge",   label: "" },
+  { from: "router",      to: "fulfillment", label: "" },
+  { from: "router",      to: "incident",    label: "" },
+  { from: "knowledge",   to: "incident",    fromSide: "bottom", toSide: "bottom",
+    bend: 70, dash: true, label: "user accepts ticket offer (ADR-022)" },
+  { from: "knowledge",   to: "router",      fromSide: "top", toSide: "left",
+    bend: -40, dash: true, labelT: 0.3, label: "back-edges: intent change only" },
+  { from: "knowledge",   to: "response",    label: "" },
+  { from: "fulfillment", to: "response",    label: "" },
+  { from: "incident",    to: "response",    label: "" },
+];
+
+const svg = document.getElementById("wires");
+const NS = "http://www.w3.org/2000/svg";
+svg.innerHTML = `<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5"
+  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+  <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#8a8a86" stroke-width="1.8"/></marker></defs>`;
+
+function anchor(id, side) {
+  const r = document.getElementById(id);
+  const x = r.offsetLeft, y = r.offsetTop, w = r.offsetWidth, h = r.offsetHeight;
+  if (side === "top")    return [x + w / 2, y];
+  if (side === "bottom") return [x + w / 2, y + h];
+  if (side === "left")   return [x, y + h / 2];
+  if (side === "right")  return [x + w, y + h / 2];
+}
+function autoSides(a, b) {
+  const ra = document.getElementById(a), rb = document.getElementById(b);
+  return (rb.offsetTop >= ra.offsetTop + ra.offsetHeight) ? ["bottom", "top"] :
+         (ra.offsetTop >= rb.offsetTop + rb.offsetHeight) ? ["top", "bottom"] :
+         (ra.offsetLeft < rb.offsetLeft) ? ["right", "left"] : ["left", "right"];
+}
+for (const e of edges) {
+  const [autoFrom, autoTo] = autoSides(e.from, e.to);
+  const p1 = anchor(e.from, e.fromSide || autoFrom);
+  const p2 = anchor(e.to,   e.toSide   || autoTo);
+  const mx = (p1[0] + p2[0]) / 2, my = (p1[1] + p2[1]) / 2;
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1], len = Math.hypot(dx, dy) || 1;
+  const bend = e.bend || 0;
+  const cx = mx + (-dy / len) * bend, cy = my + (dx / len) * bend;
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", `M ${p1[0]} ${p1[1]} Q ${cx} ${cy} ${p2[0]} ${p2[1]}`);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "#8a8a86");
+  path.setAttribute("stroke-width", "2");
+  path.setAttribute("marker-end", "url(#arr)");
+  if (e.dash) path.setAttribute("stroke-dasharray", "7 6");
+  svg.appendChild(path);
+  if (e.label) {
+    const t = document.createElementNS(NS, "text");
+    const tt = e.labelT ?? 0.5, u = 1 - tt;
+    const lx = u * u * p1[0] + 2 * u * tt * cx + tt * tt * p2[0];
+    const ly = u * u * p1[1] + 2 * u * tt * cy + tt * tt * p2[1];
+    t.setAttribute("x", lx); t.setAttribute("y", ly - 7);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("style",
+      "font-size:13.5px; fill:#73726c; paint-order:stroke; stroke:#ffffff; stroke-width:5px;");
+    t.textContent = e.label;
+    svg.appendChild(t);
+  }
+}
+</script>

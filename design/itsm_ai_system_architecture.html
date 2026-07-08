@@ -1,0 +1,167 @@
+<!-- Source for itsm_ai_system_architecture.png (M6 closeout refresh — the Jul 3 sketch
+     predated every milestone). Render:
+       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+         --screenshot=design/itsm_ai_system_architecture.png --window-size=1360,1460 \
+         --force-device-scale-factor=2 --hide-scrollbars --default-background-color=FFFFFFFF \
+         file://$PWD/design/itsm_ai_system_architecture.html
+     Corrections this refresh bakes in: sessions live in POSTGRES not Redis (M5, ADR-030);
+     M8 surfaces exist (approvals UI, Slack runner, MCP server beside — not behind — the API);
+     Neo4j is an OPTIONAL synced projection, the CMDB graph itself is Postgres (ADR-037);
+     "triage" is the router; Langfuse is wired for real (M6, ADR-042). -->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; background: #ffffff;
+         font-family: "Anthropic Sans", -apple-system, "Helvetica Neue", sans-serif; }
+  #canvas { position: relative; width: 1360px; height: 1460px; }
+  svg#wires { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+  .node { position: absolute; box-sizing: border-box; z-index: 1; border-radius: 14px;
+          border: 1.5px solid; padding: 12px 18px; text-align: center;
+          display: flex; flex-direction: column; justify-content: center; }
+  .node b { font-size: 20px; letter-spacing: -0.01em; }
+  .node span { font-size: 14px; line-height: 1.35; margin-top: 4px; }
+  .neutral { background: #f4f3ee; border-color: #d9d8d3; }
+  .neutral b { color: #3d3d3a; } .neutral span { color: #73726c; }
+  .accent  { background: #fbeee7; border-color: #cf8a68; }
+  .accent b { color: #8a2f14; } .accent span { color: #b3542e; }
+  .purple  { background: #ececfb; border-color: #9d9df0; }
+  .purple b { color: #3b3ba3; } .purple span { color: #5b5bc9; }
+  .green   { background: #e4f5ec; border-color: #83c9a7; }
+  .green b { color: #17593a; } .green span { color: #2e7d54; }
+  #agentlayer { position: absolute; z-index: 0; border: 1.5px dashed #c9c8c2; border-radius: 18px; }
+  #agentlayer label { position: absolute; top: 12px; width: 100%; text-align: center;
+                      font-size: 15px; color: #8a8a86; }
+</style>
+
+<div id="canvas">
+  <svg id="wires"></svg>
+
+  <!-- clients -->
+  <div class="node neutral" id="chatui" style="left:40px; top:30px; width:290px; height:92px;">
+    <b>Chat UI</b><span>Streamlit :8501 · session per browser,<br>acting-user picker</span></div>
+  <div class="node neutral" id="approvals" style="left:370px; top:30px; width:290px; height:92px;">
+    <b>Approvals UI</b><span>Streamlit :8502 · human approve/reject<br>for orders &gt; $500 (M2 HITL)</span></div>
+  <div class="node neutral" id="slackrunner" style="left:700px; top:30px; width:300px; height:92px;">
+    <b>Slack runner</b><span>Socket Mode (M8) · pure HTTP client of
+    /chat · fail-closed email→user identity</span></div>
+  <div class="node neutral" id="mcpclients" style="left:1040px; top:30px; width:280px; height:92px;">
+    <b>MCP clients</b><span>Claude Desktop et al.<br>via mcp-remote + bearer token</span></div>
+
+  <!-- backend -->
+  <div class="node neutral" id="api" style="left:150px; top:210px; width:700px; height:100px;">
+    <b>FastAPI backend</b><span>/chat · /approvals · /identity/resolve · /cache/stats — identity from
+    ChatContext, never an LLM arg (ADR-039) ·<br>semantic-cache pre-check before any agent (chat-only, ADR-023) · Postgres-backed sessions (M5)</span></div>
+  <div class="node neutral" id="mcpserver" style="left:990px; top:210px; width:330px; height:100px;">
+    <b>MCP server :8090</b><span>separate process (M8) · bearer token → acting user ·
+    read/create-only tool surface (ADR-040)</span></div>
+
+  <!-- agent layer -->
+  <div id="agentlayer" style="left:100px; top:380px; width:800px; height:400px;">
+    <label>Agent layer — OpenAI Agents SDK · gpt-5-mini via LiteLLM</label></div>
+  <div class="node accent" id="router" style="left:310px; top:430px; width:380px; height:92px;">
+    <b>Router agent</b><span>tool-less · classifies + hands off (ADR-003) ·<br>Slack-gated injection guardrail (ADR-041)</span></div>
+  <div class="node purple" id="knowledge" style="left:130px; top:620px; width:230px; height:110px;">
+    <b>Knowledge</b><span>hybrid search,<br>citations, refusal cascade</span></div>
+  <div class="node purple" id="fulfillment" style="left:390px; top:620px; width:230px; height:110px;">
+    <b>Fulfillment</b><span>orders + HITL<br>approvals</span></div>
+  <div class="node purple" id="incident" style="left:650px; top:620px; width:230px; height:110px;">
+    <b>Incident</b><span>tickets, dedup,<br>impact graph, Slack reply</span></div>
+
+  <!-- tools -->
+  <div class="node neutral" id="tools" style="left:280px; top:860px; width:640px; height:96px;">
+    <b>Deterministic tools — the only DB path (ADR-004)</b><span>search · tickets · orders · assets ·
+    dependency graph (M9) · Slack reply (M8) ·<br>identity/ownership guards = the real security backstop (ADR-041)</span></div>
+
+  <!-- data stores -->
+  <div class="node green" id="postgres" style="left:60px; top:1050px; width:400px; height:110px;">
+    <b>Postgres + pgvector</b><span>relational + vectors + FTS in one DB ·<br>agent sessions (M5, ADR-030) ·
+    CMDB graph: cis + dependencies, recursive CTE (M9)</span></div>
+  <div class="node green" id="redis" style="left:510px; top:1050px; width:380px; height:110px;">
+    <b>Redis</b><span>embedding / semantic / response caches + hit counters (M3) ·
+    cost accumulator (M6) ·<br>degrades silently — an optimization, never a dependency</span></div>
+  <div class="node green" id="neo4j" style="left:940px; top:1050px; width:380px; height:110px;">
+    <b>Neo4j (optional)</b><span>parity-tested alternate graph backend (ADR-037) ·
+    synced projection — Postgres stays source of truth</span></div>
+
+  <!-- observability / CI -->
+  <div class="node neutral" id="langfuse" style="left:230px; top:1290px; width:420px; height:100px;">
+    <b>Langfuse</b><span>M6 (ADR-042/043): Agents SDK trace processor → spans, tags,
+    cost, eval datasets ·<br>verified no-op when keys are unset</span></div>
+  <div class="node neutral" id="gha" style="left:710px; top:1290px; width:420px; height:100px;">
+    <b>GitHub Actions</b><span>CI: lint + 161 tests + eval-subset gate (keyless) ·
+    nightly: all 7 suites ·<br>deploy workflow inert until armed (ADR-029)</span></div>
+</div>
+
+<script>
+const edges = [
+  { from: "chatui",      to: "api" },
+  { from: "approvals",   to: "api" },
+  { from: "slackrunner", to: "api",       label: "source=slack" },
+  { from: "mcpclients",  to: "mcpserver" },
+  { from: "api",         to: "router" },
+  { from: "router",      to: "knowledge" },
+  { from: "router",      to: "fulfillment" },
+  { from: "router",      to: "incident" },
+  { from: "knowledge",   to: "tools" },
+  { from: "fulfillment", to: "tools" },
+  { from: "incident",    to: "tools" },
+  { from: "mcpserver",   to: "tools",     fromSide: "bottom", toSide: "right",
+    bend: -60, label: "same plain functions — no agents, never /chat" },
+  { from: "tools",       to: "postgres" },
+  { from: "tools",       to: "redis" },
+  { from: "tools",       to: "neo4j",     dash: true, label: "GRAPH_BACKEND=neo4j" },
+  { from: "postgres",    to: "neo4j",     fromSide: "bottom", toSide: "bottom",
+    bend: 70, dash: true, label: "python -m graph.sync_neo4j (idempotent projection)" },
+  { from: "router",      to: "langfuse",  fromSide: "left", toSide: "top",
+    bend: 150, dash: true, labelT: 0.92, label: "every agent run → spans (background export)" },
+];
+
+const svg = document.getElementById("wires");
+const NS = "http://www.w3.org/2000/svg";
+svg.innerHTML = `<defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5"
+  markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+  <path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#8a8a86" stroke-width="1.8"/></marker></defs>`;
+
+function anchor(id, side) {
+  const r = document.getElementById(id);
+  const x = r.offsetLeft, y = r.offsetTop, w = r.offsetWidth, h = r.offsetHeight;
+  if (side === "top")    return [x + w / 2, y];
+  if (side === "bottom") return [x + w / 2, y + h];
+  if (side === "left")   return [x, y + h / 2];
+  if (side === "right")  return [x + w, y + h / 2];
+}
+function autoSides(a, b) {
+  const ra = document.getElementById(a), rb = document.getElementById(b);
+  return (rb.offsetTop >= ra.offsetTop + ra.offsetHeight) ? ["bottom", "top"] :
+         (ra.offsetTop >= rb.offsetTop + rb.offsetHeight) ? ["top", "bottom"] :
+         (ra.offsetLeft < rb.offsetLeft) ? ["right", "left"] : ["left", "right"];
+}
+for (const e of edges) {
+  const [autoFrom, autoTo] = autoSides(e.from, e.to);
+  const p1 = anchor(e.from, e.fromSide || autoFrom);
+  const p2 = anchor(e.to,   e.toSide   || autoTo);
+  const mx = (p1[0] + p2[0]) / 2, my = (p1[1] + p2[1]) / 2;
+  const dx = p2[0] - p1[0], dy = p2[1] - p1[1], len = Math.hypot(dx, dy) || 1;
+  const bend = e.bend || 0;
+  const cx = mx + (-dy / len) * bend, cy = my + (dx / len) * bend;
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", `M ${p1[0]} ${p1[1]} Q ${cx} ${cy} ${p2[0]} ${p2[1]}`);
+  path.setAttribute("fill", "none");
+  path.setAttribute("stroke", "#8a8a86");
+  path.setAttribute("stroke-width", "2");
+  path.setAttribute("marker-end", "url(#arr)");
+  if (e.dash) path.setAttribute("stroke-dasharray", "7 6");
+  svg.appendChild(path);
+  if (e.label) {
+    const t = document.createElementNS(NS, "text");
+    const tt = e.labelT ?? 0.5, u = 1 - tt;
+    const lx = u * u * p1[0] + 2 * u * tt * cx + tt * tt * p2[0];
+    const ly = u * u * p1[1] + 2 * u * tt * cy + tt * tt * p2[1];
+    t.setAttribute("x", lx); t.setAttribute("y", ly - 7);
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("style",
+      "font-size:13px; fill:#73726c; paint-order:stroke; stroke:#ffffff; stroke-width:5px;");
+    t.textContent = e.label;
+    svg.appendChild(t);
+  }
+}
+</script>
