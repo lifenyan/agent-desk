@@ -1,14 +1,22 @@
 # Deploying agentdesk (first deploy, done manually — ADR-009)
 
-Three services (API + chat UI + manager approvals UI) built from the same Dockerfile, plus
-managed Postgres (with pgvector) and managed Redis. Railway is the primary path; Render is the
-alternative. The CI deploy workflow exists since M4 but ships **inert** (see "CI deploy"
-below); the AWS migration is M7.
+Three core services (API + chat UI + manager approvals UI) built from the same Dockerfile,
+plus managed Postgres (with pgvector) and managed Redis, plus two optional M8 services off
+the same image (MCP server, Slack runner — see "M8 services" below). Railway is the primary
+path; Render is the alternative. The CI deploy workflow exists since M4 but ships **inert**
+(see "CI deploy" below). (The once-planned M7 AWS migration was dropped — this PaaS runbook
+is the deployment story.)
 
 > **M2 note:** the approvals UI (`ui/approval_view.py` — the HITL approve/reject surface) is a
 > third service, added below alongside the chat UI. It's optional (API + chat UI deploy fine
-> without it), but a full order-approval demo needs it. M2 added **no new migrations**, so the
-> boot-time `alembic upgrade head` is unchanged and the M1 runbook otherwise still holds.
+> without it), but a full order-approval demo needs it.
+>
+> **Migrations note (M5/M9):** the schema is now three migrations (0001 initial, 0002 SDK
+> sessions, 0003 CMDB graph) — all applied automatically by the image CMD's
+> `alembic upgrade head` at boot; nothing extra to run.
+>
+> **M8 readiness note:** the image now packages `graph/` and `mcp_server/` (the M9 `graph`
+> package is imported at API boot; its absence broke image builds between M9 and this fix).
 
 ## Prerequisites
 
@@ -55,7 +63,8 @@ below); the AWS migration is M7.
      ```
    - Same `API_URL` variable; expose the service. This is the manager's approve/reject surface
      — deliberately separate from the chat UI (the approver is not the requester, ADR-005).
-     No auth yet (M7); anyone reaching this URL can approve, so keep it private for the demo.
+     No auth (out of scope for this portfolio project); anyone reaching this URL can approve,
+     so keep it private for the demo.
 8. **Verify**:
    - `https://<api-domain>/readyz` → `{"status":"ready","checks":{"postgres":"ok","redis":"ok"}}`
    - Chat UI: ask *"how do I reset my password"* → cited answer; *"how do I pair my Bluetooth
@@ -121,11 +130,27 @@ the workflow deploys the API only (the UIs are stateless and rarely change per A
 - **Order matters**: API must boot once (running migrations) before seed/ingest.
 - **Both UIs are stateless** and share one image + one `API_URL` — they only differ by start
   command and port, so scaling/redeploy is identical for all three services.
-- **Sessions are ephemeral in the container** (ADR-019 SQLite stopgap under `ignore/`): fine
-  for a demo, but conversation history resets on redeploy until M5 moves it into Postgres.
+- **Sessions live in Postgres since M5** (ADR-030): conversation history and pending HITL
+  state both survive container restarts and redeploys — the M2-era "sessions are ephemeral"
+  caveat no longer applies.
 - **Costs**: both PaaS free/hobby tiers fit. The only per-request LLM spend is chat + routing
   (gpt-5-mini) — embeddings are one-time + cached.
 - **What M4 added**: the inert deploy workflow above, plus the CI eval gates that every PR
   passes before it can be merged (so an armed deploy-on-merge only ever ships gated code).
-- **What M7 adds**: the AWS/Terraform migration (ECS Fargate, RDS, ElastiCache) with a
-  "PaaS → AWS: what actually changed" writeup.
+
+## M8 services (optional, same image)
+
+Both are optional — the API + UIs deploy and demo fine without them.
+
+- **MCP server** (ADR-040): fourth service off the same repo/image. Custom start command:
+  `python -m mcp_server.server`. Variables: `MCP_TOKENS` (e.g. `some-secret=demo.user@corp.com`),
+  `MCP_HOST=0.0.0.0` (the default binds loopback), plus the same `DATABASE_URL`/`REDIS_URL`/
+  `OPENAI_API_KEY` as the API (its tools hit the DB directly). Expose it with target port
+  **8090** (or set `MCP_PORT` to match the platform's assigned port). Clients connect with
+  `npx mcp-remote https://<mcp-domain>/mcp --header "Authorization: Bearer <token>"`.
+  Remember: tokens are static demo auth (ADR-039) — treat the URL+token pair as a secret.
+- **Slack runner** (ADR-038): needs NO public URL (Socket Mode dials out), so the simplest
+  setup is running it anywhere — a laptop works — pointed at the deployed API:
+  `CHAT_API_URL=https://<api-domain> SLACK_BOT_TOKEN=… SLACK_APP_TOKEN=… python -m app.slack.runner`.
+  As a hosted service: same image, start command `python -m app.slack.runner`, those three
+  variables, **no exposed port needed**. Slack app setup itself: `SLACK_SETUP.md`.
