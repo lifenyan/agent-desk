@@ -16,6 +16,8 @@ dependencies = [
     "redis",
     "langfuse",
     "neo4j",  # M9 Phase 2: driver only — the server is an optional compose service (ADR-037)
+    "mcp",  # M8: official MCP Python SDK (already a transitive dep of openai-agents; pinned as direct)
+    "slack-sdk",  # M8: Socket Mode runner + WebClient (post_slack_message)
 ]
 
 [project.optional-dependencies]

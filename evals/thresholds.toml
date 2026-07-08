@@ -69,6 +69,16 @@ accuracy = 0.65
 # the suite unconditionally on any (name, depth) mismatch.
 cte_f1_mean = 0.8
 
+[slack]
+# M8 recorded-fixture ingestion (ADR-039): 5 cases through the real runner code + a live API.
+# Final-code baseline (2026-07-07, three runs): 5/5, 4/5, 5/5. The two variable modes are
+# exactly the system's known ones, not Slack-specific: the dedup gray band (the link case —
+# ADR-028's 8-12/12 finding) and the residual ADR-022 empty-final burp (the one create miss).
+# The security-critical cases were perfect across ALL seven baseline runs incl. pre-fix code:
+# injection trap 7/7, no-matching-user fallback 7/7, trigger variant 7/7. 0.75 tolerates one
+# flipped case (4/5 passes); two failures in one run means the ingestion path itself broke.
+case_pass_rate = 0.75
+
 # [quality] — deliberately ABSENT (report-only), per ADR-026's own rule: a floor needs a
 # baseline plus observed run-to-run variance, and the first three same-day runs already moved
 # 0.6 on faithfulness mean (4.7 -> 4.1 -> 4.5) on identical code — judge-and-agent variance,

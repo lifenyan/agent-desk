@@ -61,6 +61,25 @@ class Settings(BaseSettings):
     neo4j_user: str = "neo4j"
     neo4j_password: str = "agentdesk"  # dev default; mirrors docker-compose NEO4J_AUTH
 
+    # --- Slack integration (M8, ADR-038/039) ---
+    # Both tokens empty => Slack is OFF: the runner refuses to start and post_slack_message
+    # no-ops with a logged error dict (CI and local dev run Slack-less by design).
+    slack_bot_token: str = ""  # xoxb-… — WebClient auth (thread reads + posting replies)
+    slack_app_token: str = ""  # xapp-… — Socket Mode connection (runner only)
+    slack_trigger_emoji: str = "ticket"  # reaction name that triggers ingestion (:ticket: 🎫)
+    # Test seam: when set, post_slack_message appends JSON lines here instead of calling Slack —
+    # how the slack eval suite asserts reply content with no live workspace (ADR-039).
+    slack_sink_file: str = ""
+    # The chat API the Slack runner posts to — the runner is a pure HTTP client of the normal
+    # pipeline (router → incident), exactly like the Streamlit UI. No second identity path.
+    chat_api_url: str = "http://localhost:8000"
+
+    # --- MCP server (M8) ---
+    mcp_port: int = 8090
+    # Static bearer-token → acting-user map: "token=email[,token=email…]". Full multi-user
+    # auth (OAuth, token issuance/rotation) is deliberately out of scope — see ADR-039.
+    mcp_tokens: str = ""
+
     # --- observability (M6) ---
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
@@ -79,6 +98,9 @@ class Settings(BaseSettings):
         "hitl_approval_threshold_usd",
         "retrieval_refusal_threshold",
         "graph_backend",
+        "slack_trigger_emoji",
+        "chat_api_url",
+        "mcp_port",
         mode="before",
     )
     @classmethod

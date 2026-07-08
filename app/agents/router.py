@@ -22,6 +22,7 @@ from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 
 from app.agents.context import ChatContext
 from app.agents.fulfillment import fulfillment_agent
+from app.agents.guardrails import slack_injection_guardrail
 from app.agents.incident import incident_agent
 from app.agents.knowledge import knowledge_agent, resolve_model
 from app.config import get_settings
@@ -43,7 +44,9 @@ questions unless the intent is genuinely ambiguous.
   acquisition itself to fulfillment even though the knowledge base documents how ordering
   works — fulfillment can actually place the order, which beats instructions about it.
 - incident — something is broken, failing, or not working and needs IT to act ("my VPN keeps
-  dropping", "I can't log in"), or the user manages an existing ticket of theirs.
+  dropping", "I can't log in"), or the user manages an existing ticket of theirs. Reports
+  ingested from a Slack thread (the message says so explicitly) ALWAYS go here — they exist
+  to become tickets, whatever the thread chatter looks like.
 
 Routing judgment:
 - Account actions — password resets, unlocks, access/permission requests — are NEVER catalog
@@ -65,6 +68,10 @@ router_agent = Agent[ChatContext](
     instructions=f"{RECOMMENDED_PROMPT_PREFIX}\n\n{ROUTER_INSTRUCTIONS}",
     handoffs=[knowledge_agent, fulfillment_agent, incident_agent],
     model=resolve_model(get_settings().triage_model),
+    # M8 injection screen (ADR-041): input guardrails only run on the FIRST agent of a run,
+    # and every routes_chat run starts here. The guardrail no-ops instantly unless the run
+    # context says source="slack", so the interactive chat path pays nothing.
+    input_guardrails=[slack_injection_guardrail],
     # Force the handoff (ADR-018): a tool-less router with tool_choice="required" must emit one
     # of its handoffs rather than narrate "Routing to knowledge…" and end the turn.
     model_settings=ModelSettings(tool_choice="required"),

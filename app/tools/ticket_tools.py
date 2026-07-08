@@ -1,7 +1,11 @@
-"""Ticket tools: create_ticket, update_ticket, add_ticket_comment, search_similar_tickets.
+"""Ticket tools: create_ticket, update_ticket, add_ticket_comment, get_ticket_status,
+search_similar_tickets.
 
 The ONLY place ticket writes/dedup-reads touch the database (ADR-004). Plain functions first
 (unit-testable against the seeded DB), then wrapped with @function_tool (`*_tool` names).
+get_ticket_status (M8) deliberately has NO agent wrapper: it exists for the MCP server, which
+adapts the same plain layer with its own decorator (ADR-040 — one tool surface, two adapters;
+the chat agents read status through their richer tools instead).
 
 Argument trust (DESIGN NOTE in user_tools.py): the reporter's identity comes from the run
 context, never an LLM argument; user-referenced ids (asset_id, ticket_id) are validated
@@ -205,6 +209,43 @@ def add_ticket_comment(ctx: RunContextWrapper[ChatContext], ticket_id: str, body
                 "ticket_id": str(ticket.id),
                 "ticket_title": ticket.title,
                 "ticket_status": ticket.status,
+            }
+        }
+
+
+def get_ticket_status(ctx: RunContextWrapper[ChatContext], ticket_id: str) -> dict:
+    """Get the current status of one of the current user's OWN tickets: status, priority,
+    category, and the latest comment (support updates land there).
+
+    Args:
+        ticket_id: UUID of the ticket to look up.
+    """
+    with SessionLocal() as session:
+        user = resolve_acting_user(session, ctx)
+        if isinstance(user, dict):
+            return user
+        ticket_uuid = parse_uuid_arg(ticket_id, "ticket_id")
+        if isinstance(ticket_uuid, dict):
+            return ticket_uuid
+        ticket = session.get(Ticket, ticket_uuid)
+        if ticket is None:
+            return {"error": f"ticket {ticket_id} not found"}
+        # Ownership: reading another user's ticket is an information leak (MCP exposes this
+        # to external clients — M8). Contrast add_ticket_comment, which deliberately allows
+        # foreign tickets because "me too" dedup-linking is its purpose.
+        if ticket.user_id != user.id:
+            return {"error": f"ticket {ticket_id} does not belong to the current user"}
+        latest = max(ticket.comments, key=lambda c: c.created_at, default=None)
+        return {
+            "ticket": {
+                "ticket_id": str(ticket.id),
+                "title": ticket.title,
+                "status": ticket.status,
+                "priority": ticket.priority,
+                "category": ticket.category,
+                "type": ticket.type,
+                "comment_count": len(ticket.comments),
+                "latest_comment": latest.body if latest else None,
             }
         }
 

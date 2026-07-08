@@ -1,7 +1,8 @@
-# Nightly full-suite eval run (M4; M5 added quality, M9 graph): retrieval (40) + routing
-# (all 30) + e2e (18 flows through a live uvicorn the e2e suite spawns itself) + dedup +
-# quality (LLM-as-judge, gpt-5 — ADR-033) + graph (RAG vs Graph-RAG comparison, ADR-036;
-# the Neo4j arm self-skips here — no Neo4j service in CI, the postgres arms are the gate) —
+# Nightly full-suite eval run (M4; M5 added quality, M9 graph, M8 slack): retrieval (40) +
+# routing (all 30) + e2e (18 flows through a live uvicorn the e2e suite spawns itself) +
+# dedup + quality (LLM-as-judge, gpt-5 — ADR-033) + graph (RAG vs Graph-RAG comparison,
+# ADR-036; the Neo4j arm self-skips here — no Neo4j service in CI, the postgres arms are
+# the gate) + slack (recorded thread fixtures, no live Slack anywhere — ADR-039) —
 # the suites too slow/expensive for every PR (ADR-026). workflow_dispatch is the dry-run/
 # on-demand path. Failures notify via GitHub's default workflow-failure email — deliberately
 # no extra notification infra.
@@ -21,7 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     # Generous: wall time is dominated by LLM API latency. The M5 full run (all five suites,
     # 18-flow e2e) measured 37 min locally; the M4-era 6-flow e2e alone varied 5–35 min in CI
-    # (each HTTP call individually capped at 240 s). M9's graph suite adds ~9 min measured
+    # (each HTTP call individually capped at 240 s). M9's graph suite adds ~9 min measured,
+    # M8's slack suite ~3 min measured
     # locally (~6 in CI, where the Neo4j arm is skipped) — a 2× CI-latency day on ~43 min of
     # LLM-bound suites brushes the old 90, so 120.
     timeout-minutes: 120
@@ -83,10 +85,10 @@ jobs:
           python scripts/seed_db.py
           python -m app.rag.ingest
 
-      # All five suites (no --suite flag = everything, quality included). The e2e suite spawns
-      # its own uvicorn on :8123 in this job's process group and asserts side effects through
-      # the real HTTP contract; the full metrics table (incl. per-suite cost + latency
-      # p50/p95) lands in the job summary.
+      # Every suite (no --suite flag = everything, quality included; 7 as of M8). The e2e and
+      # slack suites each spawn their own uvicorn on :8123 in this job's process group and
+      # assert side effects through the real HTTP contract; the full metrics table (incl.
+      # per-suite cost + latency p50/p95) lands in the job summary.
       - name: Full eval suite
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
