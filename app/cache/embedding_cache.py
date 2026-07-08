@@ -55,6 +55,10 @@ def get_or_embed(
     if not texts:
         return []
     model = model or get_settings().embedding_model
+    # A/B seam (M6, ADR-044): a DELIBERATE off — call straight through, no stats bump (an OFF
+    # run is not a miss), no warning noise. Distinct from the Redis-down degradation below.
+    if get_settings().caches_disabled:
+        return embed_texts(texts, model=model)
     r = r if r is not None else get_redis()
 
     keys = [_key(model, t) for t in texts]

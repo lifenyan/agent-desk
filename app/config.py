@@ -81,10 +81,21 @@ class Settings(BaseSettings):
     # auth (OAuth, token issuance/rotation) is deliberately out of scope — see ADR-039.
     mcp_tokens: str = ""
 
-    # --- observability (M6) ---
+    # --- observability (M6, ADR-042/045) ---
+    # Both keys empty => tracing is a verified NO-OP (nothing registered, langfuse never even
+    # imported) — the CI contract: no secrets, still green, no network calls added anywhere.
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
     langfuse_host: str = "https://cloud.langfuse.com"
+    # Per-CONVERSATION (session) spend alert: crossing this logs a loud warning + attaches a
+    # WARNING event to the Langfuse trace that crossed it. 0 disables. Default is ~10x a
+    # typical multi-turn gpt-5-mini conversation (baseline.json: most flows bill < $0.01).
+    cost_alert_threshold_usd: float = 0.10
+    # A/B seam (ADR-044): deliberately turn OFF all three caches (embedding/semantic/response)
+    # — reads miss, writes skip, and stats counters are NOT bumped (a chosen OFF is not a
+    # miss). Distinct from Redis-down degradation on purpose: the caching A/B's OFF arm must
+    # be a clean decision, not a simulated outage full of warning logs.
+    caches_disabled: bool = False
 
     # --- app ---
     app_env: str = "dev"

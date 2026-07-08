@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
-from agents import Agent, ModelSettings, Runner
+from agents import Agent, ModelSettings, RunConfig, Runner
 from pydantic import BaseModel, Field
 
 from app.agents.knowledge import resolve_model
@@ -79,6 +79,13 @@ async def extract_and_store(
         result = await Runner.run(
             _extractor(),
             f"Existing facts about this user:\n{existing_block}\n\nThe user's message:\n{message}",
+            # M6 (ADR-043): own workflow name so this background call never blends into the
+            # "chat" latency splits, but SAME session group — it is real conversation cost.
+            run_config=RunConfig(
+                workflow_name="memory-extraction",
+                group_id=session_id,
+                trace_metadata={"source": "internal", "user": user_ref},
+            ),
         )
         candidates = [
             FactCandidate(fact_type=f.fact_type, fact=f.fact, confidence=f.confidence)

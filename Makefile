@@ -1,4 +1,4 @@
-.PHONY: dev api ui approvals slack mcp ingest test eval eval-subset ci-local lint db-up db-down migrate generate seed reset
+.PHONY: dev api ui approvals slack mcp ingest test eval eval-subset ci-local lint db-up db-down migrate generate seed reset metrics langfuse-up langfuse-down
 
 # --- M0: database + data ---------------------------------------------------------------------------
 
@@ -67,3 +67,14 @@ ci-local:  ## what ci.yml gates on, runnable locally: lint, format check, tests,
 
 lint:
 	ruff check .
+
+# --- M6: observability -------------------------------------------------------------------------
+
+metrics:  ## headline numbers from Langfuse traces + the M3 cache counters (needs LANGFUSE_* keys)
+	python scripts/export_metrics.py
+
+langfuse-up:  ## OPTIONAL local Langfuse UI on :3000 (ADR-042 recommends Cloud; this is the keyless alternative)
+	docker compose -f docker-compose.langfuse.yml up -d --wait
+
+langfuse-down:  ## stop the local Langfuse stack, KEEP its volumes
+	docker compose -f docker-compose.langfuse.yml down

@@ -91,6 +91,16 @@ class FakeRedis:
     def incr(self, key):
         return self.incrby(key, 1)
 
+    def incrbyfloat(self, key, amount):  # M6: the per-session cost accumulator (ADR-045)
+        key = self._b(key)
+        value = float(self.store.get(key, b"0")) + float(amount)
+        self.store[key] = repr(value).encode()
+        return value
+
+    def expire(self, key, ttl):
+        self.ttls[self._b(key)] = int(ttl)
+        return True
+
     def ttl(self, key):
         return self.ttls.get(self._b(key), -1)
 

@@ -95,6 +95,11 @@ def lookup(
     match, so the embedding call (the only part that costs money) is skipped entirely.
     """
     settings = get_settings()
+    # A/B seam (M6, ADR-044): deliberate off => no lookup, no stats bump, silent. The e2e
+    # knowledge_cache flow's cached=true assertion WILL fail under this flag — expected: the
+    # OFF arm measures exactly what that assertion normally proves.
+    if settings.caches_disabled:
+        return None
     r = r if r is not None else get_redis()
     threshold = threshold if threshold is not None else settings.semantic_cache_threshold
     start = time.perf_counter()
@@ -157,6 +162,8 @@ def store(
     and that lookup already routed the same text through the embedding cache.
     """
     settings = get_settings()
+    if settings.caches_disabled:  # A/B seam (M6, ADR-044): the OFF arm must not warm the cache
+        return False
     r = r if r is not None else get_redis()
     entry = {
         "query": message,
