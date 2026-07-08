@@ -83,7 +83,9 @@ def test_fulfillment_has_only_ordering_tools():
     }
 
 
-def test_incident_has_only_ticket_tools():
+def test_incident_has_only_ticket_and_graph_tools():
+    # M9 deliberately added query_dependency_graph (ADR-035): impact/blast-radius questions
+    # are the incident agent's domain; the graph tool is read-only and user-independent.
     assert {t.name for t in incident_agent.tools} == {
         "get_user_profile",
         "get_user_assets",
@@ -91,6 +93,7 @@ def test_incident_has_only_ticket_tools():
         "create_ticket",
         "add_ticket_comment",
         "update_ticket",
+        "query_dependency_graph",
     }
 
 

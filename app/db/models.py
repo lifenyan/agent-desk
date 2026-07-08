@@ -1,5 +1,6 @@
-"""ORM models for the nine ITSM tables (users, assets, knowledge_articles, article_chunks,
-catalog_items, orders, tickets, ticket_comments, user_facts).
+"""ORM models for the ITSM tables (users, assets, knowledge_articles, article_chunks,
+catalog_items, orders, tickets, ticket_comments, user_facts) plus the M9 CMDB graph
+(cis, dependencies).
 
 Design notes (see design/DATA_DICTIONARY.md for per-column rationale):
 - Enum-like columns are plain strings guarded by CHECK constraints; the allowed values live in the
@@ -129,6 +130,23 @@ class TicketStatus(enum.StrEnum):
     in_progress = "in_progress"
     resolved = "resolved"
     closed = "closed"
+
+
+class CIType(enum.StrEnum):
+    """CMDB node kinds (M9, ADR-035). `team` is deliberately a node: keeping people-groups in
+    the same table as infrastructure means ONE edge table and ONE traversal answers
+    "server down -> which teams/users are impacted" without a second join path."""
+
+    service = "service"
+    server = "server"
+    database = "database"
+    team = "team"
+
+
+class DependencyType(enum.StrEnum):
+    runs_on = "runs_on"  # service/database -> server
+    uses = "uses"  # service -> database, team -> service
+    calls = "calls"  # service -> service
 
 
 def _in(column: str, values: type[enum.StrEnum], *, name: str) -> CheckConstraint:
@@ -366,3 +384,56 @@ class UserFact(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class CI(Base):
+    """CMDB configuration item (M9, ADR-035): infrastructure nodes (services, servers,
+    databases) plus teams-as-nodes. Deliberately NOT an extension of `assets` — assets are
+    user-owned end devices (a laptop has an owner and an OS); CIs are shared infrastructure
+    (a database has dependents and an owning org). Conflating them would force every asset
+    query to filter out infrastructure and vice versa."""
+
+    __tablename__ = "cis"
+    __table_args__ = (
+        # Tools and eval ground truth address CIs by name ("auth-service", "db-server-02"),
+        # so names are the stable public identity; unique makes name->id resolution exact.
+        UniqueConstraint("name", name="uq_cis_name"),
+        _in("ci_type", CIType, name="ck_cis_ci_type"),
+        CheckConstraint(
+            "owner_org IS NULL OR owner_org IN (%s)" % ", ".join(f"'{v.value}'" for v in Org),
+            name="ck_cis_owner_org",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    ci_type: Mapped[str] = mapped_column(String, nullable=False)
+    # For teams: the org whose users the team node represents (impact -> user resolution).
+    # For services: the owning department. NULL for servers/databases (platform-owned).
+    owner_org: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class Dependency(Base):
+    """Directed CMDB edge (M9, ADR-035): `dependent` DEPENDS ON `dependency`
+    (auth-service runs_on app-server-01; sales team uses crm-service). Impact analysis
+    traverses AGAINST the arrows (dependents of a node); root-cause analysis follows them."""
+
+    __tablename__ = "dependencies"
+    __table_args__ = (
+        UniqueConstraint("dependent_id", "dependency_id", name="uq_dependencies_edge"),
+        CheckConstraint("dependent_id <> dependency_id", name="ck_dependencies_no_self_loop"),
+        _in("dep_type", DependencyType, name="ck_dependencies_dep_type"),
+        # Traversal filters on either column depending on direction; index both.
+        Index("ix_dependencies_dependent", "dependent_id"),
+        Index("ix_dependencies_dependency", "dependency_id"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    dependent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("cis.id", ondelete="CASCADE"), nullable=False
+    )
+    dependency_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("cis.id", ondelete="CASCADE"), nullable=False
+    )
+    dep_type: Mapped[str] = mapped_column(String, nullable=False)

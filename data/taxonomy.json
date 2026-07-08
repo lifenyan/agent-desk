@@ -351,5 +351,470 @@
       {"query": "install the company whiteboard app", "expected_article_slugs": [], "refusal": true, "negative_space": "whiteboard-app-install"},
       {"query": "how do I get a parking badge", "expected_article_slugs": [], "refusal": true, "negative_space": "parking-badge-access"}
     ]
+  },
+  "infrastructure": {
+    "_comment": "M9 CMDB plan (ADR-035): infrastructure CIs + dependency edges, hand-authored like the rest of this taxonomy. Edges read 'dependent DEPENDS ON dependency'. auth-service is the deliberate shared node (6 calling services); db-server-01/06/07 and crm-db/hr-db are shared-hosting/shared-database cases \u2014 the multi-hop eval questions live in these shared nodes. monitoring-service is deliberately isolated (no auth dependency) as a blast-radius control. ci_articles are per-domain runbooks whose bodies are DETERMINISTIC templates from this plan (they carry eval ground truth \u2014 LLM prose could garble the facts); each documents only its own services' one-hop facts, so multi-hop questions require chaining articles (the fair plain-RAG comparison, ADR-036).",
+    "servers": [
+      "app-server-01",
+      "app-server-02",
+      "app-server-03",
+      "app-server-04",
+      "app-server-05",
+      "app-server-06",
+      "app-server-07",
+      "app-server-08",
+      "app-server-09",
+      "app-server-10",
+      "web-server-01",
+      "web-server-02",
+      "web-server-03",
+      "web-server-04",
+      "web-server-05",
+      "web-server-06",
+      "db-server-01",
+      "db-server-02",
+      "db-server-03",
+      "db-server-04",
+      "db-server-05",
+      "db-server-06",
+      "db-server-07",
+      "db-server-08",
+      "infra-server-01",
+      "infra-server-02",
+      "infra-server-03",
+      "infra-server-04",
+      "infra-server-05",
+      "infra-server-06"
+    ],
+    "databases": [
+      {
+        "slug": "auth-db",
+        "runs_on": [
+          "db-server-01",
+          "db-server-02"
+        ]
+      },
+      {
+        "slug": "ldap-db",
+        "runs_on": [
+          "db-server-01"
+        ]
+      },
+      {
+        "slug": "email-db",
+        "runs_on": [
+          "db-server-03"
+        ]
+      },
+      {
+        "slug": "astracore-db",
+        "runs_on": [
+          "db-server-04",
+          "db-server-05"
+        ]
+      },
+      {
+        "slug": "tickets-db",
+        "runs_on": [
+          "db-server-06"
+        ]
+      },
+      {
+        "slug": "hr-db",
+        "runs_on": [
+          "db-server-06"
+        ]
+      },
+      {
+        "slug": "payroll-db",
+        "runs_on": [
+          "db-server-07"
+        ]
+      },
+      {
+        "slug": "finance-db",
+        "runs_on": [
+          "db-server-07"
+        ]
+      },
+      {
+        "slug": "crm-db",
+        "runs_on": [
+          "db-server-08"
+        ]
+      },
+      {
+        "slug": "monitoring-db",
+        "runs_on": [
+          "db-server-03"
+        ]
+      }
+    ],
+    "services": [
+      {
+        "slug": "ldap-directory",
+        "owner_org": "engineering",
+        "description": "Corporate LDAP directory: user accounts and group membership.",
+        "runs_on": [
+          "infra-server-01",
+          "infra-server-02"
+        ],
+        "uses": [
+          "ldap-db"
+        ],
+        "calls": []
+      },
+      {
+        "slug": "auth-service",
+        "owner_org": "engineering",
+        "description": "Central authentication service (tokens, password verification).",
+        "runs_on": [
+          "app-server-01",
+          "app-server-02"
+        ],
+        "uses": [
+          "auth-db"
+        ],
+        "calls": [
+          "ldap-directory"
+        ]
+      },
+      {
+        "slug": "sso-gateway",
+        "owner_org": "engineering",
+        "description": "Single-sign-on front door for browser-based internal apps.",
+        "runs_on": [
+          "web-server-01"
+        ],
+        "uses": [],
+        "calls": [
+          "auth-service"
+        ]
+      },
+      {
+        "slug": "vpn-gateway",
+        "owner_org": "engineering",
+        "description": "Remote-access VPN concentrator.",
+        "runs_on": [
+          "infra-server-03",
+          "infra-server-04"
+        ],
+        "uses": [],
+        "calls": [
+          "auth-service"
+        ]
+      },
+      {
+        "slug": "email-gateway",
+        "owner_org": "engineering",
+        "description": "Corporate mail routing and delivery.",
+        "runs_on": [
+          "app-server-03",
+          "app-server-04"
+        ],
+        "uses": [
+          "email-db"
+        ],
+        "calls": [
+          "auth-service"
+        ]
+      },
+      {
+        "slug": "astracore-api",
+        "owner_org": "engineering",
+        "description": "AstraCore file-sync & collaboration platform API.",
+        "runs_on": [
+          "app-server-05",
+          "app-server-06"
+        ],
+        "uses": [
+          "astracore-db"
+        ],
+        "calls": [
+          "auth-service"
+        ]
+      },
+      {
+        "slug": "astracore-web",
+        "owner_org": "engineering",
+        "description": "AstraCore web client.",
+        "runs_on": [
+          "web-server-02",
+          "web-server-03"
+        ],
+        "uses": [],
+        "calls": [
+          "astracore-api"
+        ]
+      },
+      {
+        "slug": "ticketing-service",
+        "owner_org": "engineering",
+        "description": "IT service-desk ticketing backend.",
+        "runs_on": [
+          "app-server-07"
+        ],
+        "uses": [
+          "tickets-db"
+        ],
+        "calls": [
+          "sso-gateway"
+        ]
+      },
+      {
+        "slug": "monitoring-service",
+        "owner_org": "engineering",
+        "description": "Infrastructure monitoring and alerting (deliberately standalone).",
+        "runs_on": [
+          "infra-server-05",
+          "infra-server-06"
+        ],
+        "uses": [
+          "monitoring-db"
+        ],
+        "calls": []
+      },
+      {
+        "slug": "print-service",
+        "owner_org": "engineering",
+        "description": "Print queue management for office printers.",
+        "runs_on": [
+          "infra-server-03"
+        ],
+        "uses": [],
+        "calls": [
+          "ldap-directory"
+        ]
+      },
+      {
+        "slug": "hr-portal",
+        "owner_org": "hr",
+        "description": "Employee self-service HR portal.",
+        "runs_on": [
+          "web-server-04"
+        ],
+        "uses": [
+          "hr-db"
+        ],
+        "calls": [
+          "sso-gateway"
+        ]
+      },
+      {
+        "slug": "payroll-service",
+        "owner_org": "finance",
+        "description": "Payroll processing (reads employee data from hr-db).",
+        "runs_on": [
+          "app-server-08"
+        ],
+        "uses": [
+          "payroll-db",
+          "hr-db"
+        ],
+        "calls": [
+          "auth-service"
+        ]
+      },
+      {
+        "slug": "crm-service",
+        "owner_org": "sales",
+        "description": "Customer relationship management backend.",
+        "runs_on": [
+          "app-server-09",
+          "app-server-10"
+        ],
+        "uses": [
+          "crm-db"
+        ],
+        "calls": [
+          "auth-service"
+        ]
+      },
+      {
+        "slug": "sales-dashboard",
+        "owner_org": "sales",
+        "description": "Sales analytics dashboards (reads crm-db directly).",
+        "runs_on": [
+          "web-server-05"
+        ],
+        "uses": [
+          "crm-db"
+        ],
+        "calls": [
+          "crm-service"
+        ]
+      },
+      {
+        "slug": "finance-reporting",
+        "owner_org": "finance",
+        "description": "Financial reporting (reads revenue data from crm-db).",
+        "runs_on": [
+          "web-server-06"
+        ],
+        "uses": [
+          "finance-db",
+          "crm-db"
+        ],
+        "calls": [
+          "sso-gateway"
+        ]
+      }
+    ],
+    "teams": [
+      {
+        "slug": "team-sales",
+        "org": "sales",
+        "uses": [
+          "crm-service",
+          "sales-dashboard",
+          "email-gateway",
+          "astracore-web",
+          "vpn-gateway"
+        ]
+      },
+      {
+        "slug": "team-engineering",
+        "org": "engineering",
+        "uses": [
+          "astracore-web",
+          "ticketing-service",
+          "monitoring-service",
+          "email-gateway",
+          "vpn-gateway",
+          "print-service"
+        ]
+      },
+      {
+        "slug": "team-finance",
+        "org": "finance",
+        "uses": [
+          "finance-reporting",
+          "payroll-service",
+          "email-gateway",
+          "astracore-web",
+          "vpn-gateway"
+        ]
+      },
+      {
+        "slug": "team-hr",
+        "org": "hr",
+        "uses": [
+          "hr-portal",
+          "payroll-service",
+          "email-gateway",
+          "astracore-web",
+          "print-service"
+        ]
+      }
+    ],
+    "ci_articles": [
+      {
+        "slug": "runbook-auth-stack",
+        "title": "Runbook: authentication stack (auth-service, sso-gateway, ldap-directory)",
+        "category": "accounts",
+        "covers": [
+          "auth-service",
+          "sso-gateway",
+          "ldap-directory"
+        ]
+      },
+      {
+        "slug": "runbook-astracore-infra",
+        "title": "Runbook: AstraCore platform infrastructure",
+        "category": "software",
+        "covers": [
+          "astracore-api",
+          "astracore-web"
+        ]
+      },
+      {
+        "slug": "runbook-comms-remote-access",
+        "title": "Runbook: email-gateway and vpn-gateway",
+        "category": "network",
+        "covers": [
+          "email-gateway",
+          "vpn-gateway"
+        ]
+      },
+      {
+        "slug": "runbook-sales-stack",
+        "title": "Runbook: CRM and sales analytics stack",
+        "category": "software",
+        "covers": [
+          "crm-service",
+          "sales-dashboard"
+        ]
+      },
+      {
+        "slug": "runbook-corporate-apps",
+        "title": "Runbook: HR, payroll, and finance reporting services",
+        "category": "software",
+        "covers": [
+          "hr-portal",
+          "payroll-service",
+          "finance-reporting"
+        ]
+      },
+      {
+        "slug": "runbook-internal-tools",
+        "title": "Runbook: ticketing, monitoring, and print services",
+        "category": "software",
+        "covers": [
+          "ticketing-service",
+          "monitoring-service",
+          "print-service"
+        ]
+      },
+      {
+        "slug": "runbook-database-hosting",
+        "title": "Runbook: database hosting map",
+        "category": "other",
+        "covers": []
+      }
+    ],
+    "ci_tickets": [
+      {
+        "slug": "ci-crm-502",
+        "title": "crm-service returning 502 errors",
+        "ci": "crm-service",
+        "status": "open",
+        "priority": "high"
+      },
+      {
+        "slug": "ci-hr-portal-500",
+        "title": "hr-portal shows an internal server error",
+        "ci": "hr-portal",
+        "status": "open",
+        "priority": "medium"
+      },
+      {
+        "slug": "ci-payroll-batch",
+        "title": "payroll-service nightly batch failed",
+        "ci": "payroll-service",
+        "status": "open",
+        "priority": "high"
+      },
+      {
+        "slug": "ci-finance-export",
+        "title": "finance-reporting export comes back empty",
+        "ci": "finance-reporting",
+        "status": "resolved",
+        "priority": "medium"
+      },
+      {
+        "slug": "ci-astracore-webhooks",
+        "title": "astracore-api webhook deliveries failing",
+        "ci": "astracore-api",
+        "status": "resolved",
+        "priority": "medium"
+      },
+      {
+        "slug": "ci-monitoring-noise",
+        "title": "monitoring-service paging false alarms",
+        "ci": "monitoring-service",
+        "status": "resolved",
+        "priority": "low"
+      }
+    ]
   }
 }

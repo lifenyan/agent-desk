@@ -1,0 +1,415 @@
+[
+  {
+    "id": "c87ceb44-5312-5226-bdb9-65ac44c2beba",
+    "name": "team-sales",
+    "ci_type": "team",
+    "owner_org": "sales",
+    "description": "All users in the sales org."
+  },
+  {
+    "id": "edcd32eb-abd1-51e8-b526-33b31377d861",
+    "name": "team-engineering",
+    "ci_type": "team",
+    "owner_org": "engineering",
+    "description": "All users in the engineering org."
+  },
+  {
+    "id": "b156b77d-3275-5cc9-afe0-4e27a1a12122",
+    "name": "team-finance",
+    "ci_type": "team",
+    "owner_org": "finance",
+    "description": "All users in the finance org."
+  },
+  {
+    "id": "479f5029-611c-5bce-9819-a593a1854f25",
+    "name": "team-hr",
+    "ci_type": "team",
+    "owner_org": "hr",
+    "description": "All users in the hr org."
+  },
+  {
+    "id": "09b06b1c-2c8d-5472-ba69-040be8fa4b69",
+    "name": "ldap-directory",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "Corporate LDAP directory: user accounts and group membership."
+  },
+  {
+    "id": "70a22266-d70c-57e8-ba0c-9e969bce5df9",
+    "name": "auth-service",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "Central authentication service (tokens, password verification)."
+  },
+  {
+    "id": "0c3fcdcc-df91-5252-a55c-a20cbff23ece",
+    "name": "sso-gateway",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "Single-sign-on front door for browser-based internal apps."
+  },
+  {
+    "id": "d7932319-0afe-53a4-a777-3f76adee3a05",
+    "name": "vpn-gateway",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "Remote-access VPN concentrator."
+  },
+  {
+    "id": "83248eec-cd26-5f17-9d3a-d983713a6959",
+    "name": "email-gateway",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "Corporate mail routing and delivery."
+  },
+  {
+    "id": "b40501a8-0635-5910-946b-ad01a9a55127",
+    "name": "astracore-api",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "AstraCore file-sync & collaboration platform API."
+  },
+  {
+    "id": "698df49e-3e4f-57a2-8065-4ca00c17827a",
+    "name": "astracore-web",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "AstraCore web client."
+  },
+  {
+    "id": "53ef9cfe-990b-574e-b3dd-4558ae8586de",
+    "name": "ticketing-service",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "IT service-desk ticketing backend."
+  },
+  {
+    "id": "05c977a1-075c-5111-a0f2-97ff4817c91c",
+    "name": "monitoring-service",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "Infrastructure monitoring and alerting (deliberately standalone)."
+  },
+  {
+    "id": "f9caf601-c399-523c-9e20-a985bcd846ba",
+    "name": "print-service",
+    "ci_type": "service",
+    "owner_org": "engineering",
+    "description": "Print queue management for office printers."
+  },
+  {
+    "id": "d0ab9f7d-8490-5c9a-9d4e-8a4cef35a77b",
+    "name": "hr-portal",
+    "ci_type": "service",
+    "owner_org": "hr",
+    "description": "Employee self-service HR portal."
+  },
+  {
+    "id": "74c8f50c-a17b-5df0-9fce-e0470a59c1f7",
+    "name": "payroll-service",
+    "ci_type": "service",
+    "owner_org": "finance",
+    "description": "Payroll processing (reads employee data from hr-db)."
+  },
+  {
+    "id": "9a1426fb-b427-569b-ac64-bcc4fc4a111a",
+    "name": "crm-service",
+    "ci_type": "service",
+    "owner_org": "sales",
+    "description": "Customer relationship management backend."
+  },
+  {
+    "id": "f976c5d5-67b9-5b56-ab14-27486e149c38",
+    "name": "sales-dashboard",
+    "ci_type": "service",
+    "owner_org": "sales",
+    "description": "Sales analytics dashboards (reads crm-db directly)."
+  },
+  {
+    "id": "3d6f7fe2-cbdc-507e-9da8-a41992e36274",
+    "name": "finance-reporting",
+    "ci_type": "service",
+    "owner_org": "finance",
+    "description": "Financial reporting (reads revenue data from crm-db)."
+  },
+  {
+    "id": "71e682b2-47a4-5580-952b-a118931c7ebb",
+    "name": "app-server-01",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "b19cd43c-6d7f-580e-9397-ddfd1af75744",
+    "name": "app-server-02",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "50667fea-1796-5e2a-aac4-db805ea36818",
+    "name": "app-server-03",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "bc432e71-a617-5a3b-ac2e-0b1a5f874c8e",
+    "name": "app-server-04",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "a38b751c-bf2a-52b3-8472-db9fd22b6a62",
+    "name": "app-server-05",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "3e420abd-b60d-5f0f-81be-cd7560286168",
+    "name": "app-server-06",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "8d9bb2e7-0397-5eef-a960-e88530f69843",
+    "name": "app-server-07",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "fe7825fb-7744-5981-9e3e-7a90b5e13511",
+    "name": "app-server-08",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "d18f8462-51db-53d0-b010-17a97b99d8f9",
+    "name": "app-server-09",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "a3b88725-a678-5596-baae-f34504e94d8c",
+    "name": "app-server-10",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "1d17e9d2-80f2-5671-bf64-4f60fa973013",
+    "name": "web-server-01",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "3f9bbec0-2589-546b-a737-56ed72114c58",
+    "name": "web-server-02",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "1c4c6798-a305-5c71-ab39-1fe8ad144c18",
+    "name": "web-server-03",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "d7e2d475-f77b-53fd-a446-1c1c00deff22",
+    "name": "web-server-04",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "88cfa216-4e77-537b-8f3b-fdca1fcb3ac6",
+    "name": "web-server-05",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "3b18431a-c3fe-5b93-b741-40e228d740fd",
+    "name": "web-server-06",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "4945c087-5f17-54f6-906b-4966e3e8ac69",
+    "name": "db-server-01",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "18b0d0b6-80d6-5e94-9ba0-059306986517",
+    "name": "db-server-02",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "3e9e4300-f143-5731-97b2-e8febf92d9a5",
+    "name": "db-server-03",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "95ba990f-3e7f-56fa-9d8e-e00813e28a0b",
+    "name": "db-server-04",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "6c4b01c2-2700-5a41-ba26-994c4f6dba3f",
+    "name": "db-server-05",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "2d0a7dc7-a5b2-582a-8751-69a1396595b9",
+    "name": "db-server-06",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "27fec7c8-e14f-59ce-88dd-a61a76100282",
+    "name": "db-server-07",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "81691a1d-c0cf-5ee8-a992-cfa6af52fb8d",
+    "name": "db-server-08",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "d6d61854-9a80-5645-adc0-c41e736848bf",
+    "name": "infra-server-01",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "3b1c996f-13ef-53bb-a3fa-da6ed317f094",
+    "name": "infra-server-02",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "6df696c7-4d06-53ba-af09-67a668cad223",
+    "name": "infra-server-03",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "bedc9ede-ae95-566f-8193-43de6ab0efcf",
+    "name": "infra-server-04",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "ef0e44c5-e2e7-59c5-a3da-642a16163258",
+    "name": "infra-server-05",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "90313f9f-1ecf-5baf-a4cd-c43c2ce1062f",
+    "name": "infra-server-06",
+    "ci_type": "server",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "8317e1a4-b1cd-5b5c-8da2-51c4daaae9eb",
+    "name": "auth-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "75cb2199-0feb-52af-88d0-cf86f6766f5c",
+    "name": "ldap-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "e61fc2e3-b22a-5c36-97e9-d686a6189ef6",
+    "name": "email-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "f31f7a98-4588-53db-9286-3a95c4e3bdf9",
+    "name": "astracore-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "5b15aa0e-cd04-589f-bb87-69f7008776e5",
+    "name": "tickets-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "5ac0204b-aba5-5384-82cf-b925f8f4a987",
+    "name": "hr-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "a3fd8383-4a99-5ea0-b998-9954961db267",
+    "name": "payroll-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "3e46729b-23fb-5e08-8e8a-699aa91e6d0f",
+    "name": "finance-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "cbd45500-77d0-5991-8d03-bb687ad722e5",
+    "name": "crm-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  },
+  {
+    "id": "c1740554-069a-5714-b601-e07bd5f61a17",
+    "name": "monitoring-db",
+    "ci_type": "database",
+    "owner_org": null,
+    "description": null
+  }
+]

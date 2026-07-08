@@ -32,6 +32,8 @@ TABLES: list[tuple[type, str]] = [
     (models.Ticket, "tickets.json"),
     (models.TicketComment, "ticket_comments.json"),
     (models.UserFact, "user_facts.json"),
+    (models.CI, "cis.json"),  # M9 CMDB graph: nodes before edges
+    (models.Dependency, "dependencies.json"),
 ]
 
 

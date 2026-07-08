@@ -15,6 +15,7 @@ dependencies = [
     "pgvector",
     "redis",
     "langfuse",
+    "neo4j",  # M9 Phase 2: driver only — the server is an optional compose service (ADR-037)
 ]
 
 [project.optional-dependencies]

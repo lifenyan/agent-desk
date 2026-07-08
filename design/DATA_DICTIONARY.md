@@ -129,6 +129,31 @@ Also the natural mechanism for M8: when the incident agent links a duplicate Sla
 | confidence | float | 0–1 extraction confidence ("user explicitly said they have a Mac" ≈ 0.95; "user mentioned Xcode, probably a Mac" ≈ 0.6). Merge rule keeps newer/higher-confidence; injection skips facts below a threshold |
 | updated_at | timestamp | tiebreaker in the merge rule |
 
+## cis
+
+**CMDB configuration items (M9, ADR-035)** — shared infrastructure nodes: services, servers, databases, plus *teams as nodes*. Deliberately a separate table from `assets`: assets are user-owned end devices (an owner, an OS, a model); CIs are shared infrastructure (dependents, an owning org, no user). One generalized node table (rather than per-kind tables) keeps the dependency traversal a single self-join and gives edges real FK integrity. Queried only through `query_dependency_graph` (ADR-004).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| name | string | unique; the stable *public* identity (`auth-service`, `db-server-02`, `team-sales`) — tools and eval ground truth resolve CIs by name, never by UUID |
+| ci_type | string | `service / server / database / team`. Teams are nodes on purpose: "server down → which teams/users?" becomes one traversal plus a users-by-org lookup, not a special-cased join path |
+| owner_org | string, nullable | for teams: the org whose users the node represents (`sales / engineering / finance / hr`) — this is how an impact set resolves to a user count. For services: the owning department. NULL for servers/databases (platform-owned) |
+| description | text, nullable | one-liner for tool payloads and demos |
+
+## dependencies
+
+Directed CMDB edges: **`dependent` DEPENDS ON `dependency`** (`auth-service runs_on app-server-01`, `team-sales uses crm-service`). Impact analysis ("what breaks?") traverses *against* the arrows; root-cause analysis ("what does it rely on?") follows them. Cycle safety lives in the traversal (recursive-CTE path guard / Cypher relationship isomorphism), not the schema — only self-loops are structurally impossible.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| dependent_id | uuid FK → cis (CASCADE) | the thing that relies |
+| dependency_id | uuid FK → cis (CASCADE) | the thing relied upon; unique together with `dependent_id`, and `<> dependent_id` (no self-loops). Both columns are indexed — traversal filters on either depending on direction |
+| dep_type | string | edge flavor for display: `runs_on` (service/database → server) / `uses` (service → database, team → service) / `calls` (service → service). Traversal ignores it |
+
+Neo4j (Phase 2) holds a *derived projection* of these two tables — `(:CI)-[:DEPENDS_ON]->(:CI)`, written by `graph/sync_neo4j.py`. Postgres remains the source of truth.
+
 ---
 
 ## Cross-table invariants (enforce in data generation and tools)

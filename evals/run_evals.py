@@ -1,4 +1,5 @@
-"""Eval harness CLI: run the full suite (retrieval, routing, e2e, dedup, quality) or --subset.
+"""Eval harness CLI: run the full suite (retrieval, routing, e2e, dedup, quality, graph) or
+--subset.
 
 M1 implemented the retrieval suite, M2 routing; M4 plugged e2e (evals/suite_e2e.py) and dedup
 (evals/suite_dedup.py) into the SUITES registry, moved the pass/fail floors into
@@ -14,7 +15,9 @@ below observed variance, not perfection gates), and added:
   per-suite metrics tables are appended there as markdown.
 M5 added the quality suite (evals/suite_quality.py, LLM-as-judge — ADR-033), per-case
 cost/latency on every suite (--out writes the full JSON; evals/results/baseline.json is a
-committed run — ADR-034), and the routing wrong-handoff matrix.
+committed run — ADR-034), and the routing wrong-handoff matrix. M9 added the graph suite
+(evals/suite_graph.py — the plain-RAG vs Graph-RAG three-way comparison, ADR-036; nightly,
+Neo4j arm self-skips when the optional server is absent).
 
 Scoring mirrors the two-stage refusal cascade (ADR-017):
 - ANSWERABLE cases run DIRECTLY against rag.hybrid_search — no LLM in the loop (the only
@@ -80,6 +83,7 @@ from evals.common import (  # noqa: E402
 from evals.metrics import dedupe_preserving_order, mrr, recall_at_k  # noqa: E402
 from evals.suite_dedup import run_dedup  # noqa: E402
 from evals.suite_e2e import run_e2e  # noqa: E402
+from evals.suite_graph import run_graph  # noqa: E402
 from evals.suite_quality import run_quality  # noqa: E402
 
 # Floors come from evals/thresholds.toml (ADR-026) — regression gates below observed variance.
@@ -322,14 +326,16 @@ def run_routing(subset: bool = False, **_ignored) -> dict:
 
 
 # e2e (side-effect assertions through the live HTTP API, ADR-027), dedup (the ADR-021
-# gray-band judgment eval, ADR-028), and quality (LLM-as-judge, ADR-033) live in their own
-# modules; all three are nightly-only suites.
+# gray-band judgment eval, ADR-028), quality (LLM-as-judge, ADR-033), and graph (the M9
+# three-way RAG-vs-Graph-RAG comparison, ADR-036) live in their own modules; all four are
+# nightly-only suites.
 SUITES = {
     "retrieval": run_retrieval,
     "routing": run_routing,
     "e2e": run_e2e,
     "dedup": run_dedup,
     "quality": run_quality,
+    "graph": run_graph,
 }
 SUBSET_SUITES = ("retrieval", "routing")  # the PR gate: the rest stay nightly (ADR-026)
 
@@ -488,12 +494,62 @@ def _print_quality_report(report: dict) -> None:
     _print_cost_latency(report)
 
 
+def _print_graph_report(report: dict) -> None:
+    print("\n=== graph suite (plain RAG vs Graph-RAG on multi-hop questions — ADR-036) ===")
+    header = (
+        f"{'entities':<36} {'dir':<12} {'hops':>4} {'arm':<6} {'f1':>5} {'exact':>5}  worst misses"
+    )
+    print(header)
+    print("-" * len(header))
+    for r in report["rows"]:
+        missed = ", ".join(r["missed"][:3]) + ("…" if len(r["missed"]) > 3 else "")
+        flag = "refused" if r.get("refused") else (r.get("error") or "")
+        print(
+            f"{','.join(r['entities'])[:36]:<36} {r['direction']:<12} {r['hops']:>4} "
+            f"{r['arm']:<6} {r['f1']:>5.2f} {'y' if r['exact'] else 'N':>5}  "
+            f"{(flag + ' ' if flag else '') + missed}"
+        )
+    agg = report["aggregates"]
+    print("-" * len(header))
+    for arm, a in agg["arms"].items():
+        if a is None:
+            print(f"{arm:>6}: skipped (Neo4j unreachable — postgres path unaffected)")
+            continue
+        print(
+            f"{arm:>6}: F1 {a['f1_mean']:.3f} (P {a['precision_mean']:.3f} / R "
+            f"{a['recall_mean']:.3f}) | exact {a['exact_rate']:.3f} | by depth: "
+            f"1-2 hops {a['f1_by_depth']['shallow_1_2_hops']} / 3+ hops "
+            f"{a['f1_by_depth']['deep_3plus_hops']} | refusals {a['refusals']} | "
+            f"errors {a['errors']}"
+        )
+    lat = agg["tool_latency"]
+    neo_lat = (
+        f"neo4j p50/p95 {lat['neo4j']['p50_ms']}/{lat['neo4j']['p95_ms']} ms"
+        if lat["neo4j"]
+        else "neo4j n/a"
+    )
+    parity = (
+        "n/a"
+        if agg["parity_mismatches"] is None
+        else ("OK" if not agg["parity_mismatches"] else f"MISMATCH {agg['parity_mismatches']}")
+    )
+    print(
+        f"tool latency ({LATENCY_REPS_NOTE}): postgres p50/p95 "
+        f"{lat['postgres']['p50_ms']}/{lat['postgres']['p95_ms']} ms | {neo_lat} | "
+        f"backend parity: {parity} | suite: {'PASS' if report['passed'] else 'FAIL'}"
+    )
+    _print_cost_latency(report)
+
+
+LATENCY_REPS_NOTE = "LLM-free, tool-level"
+
 _PRINTERS = {
     "retrieval": _print_retrieval_report,
     "routing": _print_routing_report,
     "e2e": _print_e2e_report,
     "dedup": _print_dedup_report,
     "quality": _print_quality_report,
+    "graph": _print_graph_report,
 }
 
 
@@ -558,6 +614,42 @@ def _summary_rows(report: dict) -> list[tuple[str, str, str, str]]:
             ("dedup", "link accuracy", link, "—"),
             ("dedup", "trap accuracy", trap, "—"),
         ]
+    if report["suite"] == "graph":
+        floors = FLOORS.get("graph", {})
+        cte_floor = f"≥ {floors['cte_f1_mean']}" if "cte_f1_mean" in floors else "report-only"
+        rows = []
+        for arm, a in agg["arms"].items():
+            if a is None:
+                rows.append(("graph", f"{arm} arm", "skipped (Neo4j unreachable)", "—"))
+                continue
+            rows.append(
+                (
+                    "graph",
+                    f"{arm} F1 (exact-set rate)",
+                    f"{a['f1_mean']:.3f} ({a['exact_rate']:.3f})",
+                    cte_floor if arm == "cte" else "—",
+                )
+            )
+        lat = agg["tool_latency"]
+        neo = f"{lat['neo4j']['p50_ms']}ms" if lat["neo4j"] else "n/a"
+        rows.append(
+            (
+                "graph",
+                "tool latency p50 (pg / neo4j)",
+                f"{lat['postgres']['p50_ms']}ms / {neo}",
+                "—",
+            )
+        )
+        if agg["parity_mismatches"] is not None:
+            rows.append(
+                (
+                    "graph",
+                    "backend parity",
+                    "OK" if not agg["parity_mismatches"] else "MISMATCH",
+                    "exact",
+                )
+            )
+        return rows
     if report["suite"] == "quality":
         floors = FLOORS.get("quality", {})
         return [
