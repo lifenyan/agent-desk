@@ -86,6 +86,9 @@ def test_fulfillment_has_only_ordering_tools():
 def test_incident_has_only_ticket_and_graph_tools():
     # M9 deliberately added query_dependency_graph (ADR-035): impact/blast-radius questions
     # are the incident agent's domain; the graph tool is read-only and user-independent.
+    # M8 deliberately added the Slack reply pair (ADR-039): post_slack_message (destination
+    # locked to the run context's thread) + search_knowledge_articles (the ONE suggested
+    # article in the thread reply — instructions scope it to that step).
     assert {t.name for t in incident_agent.tools} == {
         "get_user_profile",
         "get_user_assets",
@@ -94,7 +97,21 @@ def test_incident_has_only_ticket_and_graph_tools():
         "add_ticket_comment",
         "update_ticket",
         "query_dependency_graph",
+        "search_knowledge_articles",
+        "post_slack_message",
     }
+
+
+def test_injection_guardrail_pinned_on_router_only():
+    # ADR-041: input guardrails only run on a run's FIRST agent, and every routes_chat run
+    # starts at the router — attaching it anywhere else is dead config a refactor could
+    # mistake for coverage. run_in_parallel=False is load-bearing: the tripwire must fire
+    # BEFORE any specialist tool call, not race it.
+    names = [g.get_name() for g in router_agent.input_guardrails]
+    assert names == ["slack_injection_guardrail"]
+    assert all(not g.run_in_parallel for g in router_agent.input_guardrails)
+    for agent in (knowledge_agent, fulfillment_agent, incident_agent):
+        assert agent.input_guardrails == []
 
 
 def test_no_agent_can_approve_orders():

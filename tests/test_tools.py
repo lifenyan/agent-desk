@@ -53,9 +53,11 @@ from app.tools.catalog_tools import (  # noqa: E402
     reject_order,
     request_approval,
 )
+from app.tools.slack_tools import post_slack_message  # noqa: E402
 from app.tools.ticket_tools import (  # noqa: E402
     add_ticket_comment,
     create_ticket,
+    get_ticket_status,
     search_similar_tickets,
     update_ticket,
 )
@@ -246,6 +248,81 @@ def test_comment_on_foreign_ticket_is_allowed_for_dedup(demo_ctx, demo_user_id, 
 def test_comment_on_missing_ticket_errors(demo_ctx):
     payload = add_ticket_comment(demo_ctx, str(uuid.uuid4()), "hello?")
     assert "not found" in payload["error"]
+
+
+# --- get_ticket_status (M8, built for the MCP surface — ADR-040) ------------------------------
+
+
+def test_ticket_status_own_ticket(demo_ctx, demo_user_id):
+    with SessionLocal() as s:
+        own = s.scalars(select(Ticket).where(Ticket.user_id == demo_user_id).limit(1)).one()
+    payload = get_ticket_status(demo_ctx, str(own.id))
+    ticket = payload["ticket"]
+    assert ticket["ticket_id"] == str(own.id)
+    assert ticket["status"] == own.status
+    assert {"title", "priority", "category", "comment_count", "latest_comment"} <= ticket.keys()
+
+
+def test_ticket_status_foreign_ticket_is_refused(demo_ctx, demo_user_id):
+    # Unlike add_ticket_comment (foreign allowed for dedup), status READS are ownership-gated:
+    # MCP exposes this to external clients, and other users' tickets are an information leak.
+    with SessionLocal() as s:
+        foreign = s.scalar(select(Ticket.id).where(Ticket.user_id != demo_user_id).limit(1))
+    payload = get_ticket_status(demo_ctx, str(foreign))
+    assert "does not belong" in payload["error"]
+
+
+def test_ticket_status_guards_format_and_existence(demo_ctx):
+    assert "expected a UUID" in get_ticket_status(demo_ctx, "my latest ticket")["error"]
+    assert "not found" in get_ticket_status(demo_ctx, str(uuid.uuid4()))["error"]
+
+
+def test_ticket_status_requires_identity():
+    payload = get_ticket_status(ctx_for(None), str(uuid.uuid4()))
+    assert "no acting user" in payload["error"]
+
+
+# --- post_slack_message (M8, ADR-039): destination from context, graceful degradation ---------
+
+
+def slack_ctx(**overrides) -> RunContextWrapper[ChatContext]:
+    fields = {
+        "user_id": DEMO_EMAIL,
+        "source": "slack",
+        "slack_channel": "C123",
+        "slack_thread_ts": "1700000000.000100",
+    }
+    fields.update(overrides)
+    return RunContextWrapper(context=ChatContext(**fields))
+
+
+def test_post_slack_message_refuses_outside_slack_thread(demo_ctx):
+    # The chat path has no thread — the LLM cannot conjure a destination (never an argument).
+    payload = post_slack_message(demo_ctx, "hello thread")
+    assert "not a Slack conversation" in payload["error"]
+
+
+def test_post_slack_message_sink_seam_captures_instead_of_sending(monkeypatch, tmp_path):
+    sink = tmp_path / "slack_sink.jsonl"
+    monkeypatch.setattr(get_settings(), "slack_sink_file", str(sink))
+    payload = post_slack_message(slack_ctx(), "ticket ABC linked")
+    assert payload["slack_message"]["posted"] is True
+    import json
+
+    line = json.loads(sink.read_text().splitlines()[0])
+    assert line == {
+        "channel": "C123",
+        "thread_ts": "1700000000.000100",
+        "text": "ticket ABC linked",
+    }
+
+
+def test_post_slack_message_noops_without_credentials(monkeypatch):
+    # CI / local dev run Slack-less: a logged error dict, never a crash (M8 requirement 2).
+    monkeypatch.setattr(get_settings(), "slack_sink_file", "")
+    monkeypatch.setattr(get_settings(), "slack_bot_token", "")
+    payload = post_slack_message(slack_ctx(), "ticket ABC created")
+    assert "not configured" in payload["error"]
 
 
 def test_similar_tickets_finds_exact_seeded_duplicate(demo_ctx):

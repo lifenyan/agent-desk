@@ -1,5 +1,5 @@
-"""Eval harness CLI: run the full suite (retrieval, routing, e2e, dedup, quality, graph) or
---subset.
+"""Eval harness CLI: run the full suite (retrieval, routing, e2e, dedup, quality, graph,
+slack) or --subset.
 
 M1 implemented the retrieval suite, M2 routing; M4 plugged e2e (evals/suite_e2e.py) and dedup
 (evals/suite_dedup.py) into the SUITES registry, moved the pass/fail floors into
@@ -17,7 +17,9 @@ M5 added the quality suite (evals/suite_quality.py, LLM-as-judge — ADR-033), p
 cost/latency on every suite (--out writes the full JSON; evals/results/baseline.json is a
 committed run — ADR-034), and the routing wrong-handoff matrix. M9 added the graph suite
 (evals/suite_graph.py — the plain-RAG vs Graph-RAG three-way comparison, ADR-036; nightly,
-Neo4j arm self-skips when the optional server is absent).
+Neo4j arm self-skips when the optional server is absent). M8 added the slack suite
+(evals/suite_slack.py — recorded thread fixtures through the real runner code incl. the
+injection trap, ADR-039/041; nightly, no live Slack anywhere).
 
 Scoring mirrors the two-stage refusal cascade (ADR-017):
 - ANSWERABLE cases run DIRECTLY against rag.hybrid_search — no LLM in the loop (the only
@@ -85,6 +87,7 @@ from evals.suite_dedup import run_dedup  # noqa: E402
 from evals.suite_e2e import run_e2e  # noqa: E402
 from evals.suite_graph import run_graph  # noqa: E402
 from evals.suite_quality import run_quality  # noqa: E402
+from evals.suite_slack import run_slack  # noqa: E402
 
 # Floors come from evals/thresholds.toml (ADR-026) — regression gates below observed variance.
 RECALL_AT_5_FLOOR = FLOORS["retrieval"]["recall_at_5"]
@@ -326,8 +329,9 @@ def run_routing(subset: bool = False, **_ignored) -> dict:
 
 
 # e2e (side-effect assertions through the live HTTP API, ADR-027), dedup (the ADR-021
-# gray-band judgment eval, ADR-028), quality (LLM-as-judge, ADR-033), and graph (the M9
-# three-way RAG-vs-Graph-RAG comparison, ADR-036) live in their own modules; all four are
+# gray-band judgment eval, ADR-028), quality (LLM-as-judge, ADR-033), graph (the M9
+# three-way RAG-vs-Graph-RAG comparison, ADR-036), and slack (M8 recorded-fixture ingestion
+# incl. the injection trap, ADR-039/041) live in their own modules; all five are
 # nightly-only suites.
 SUITES = {
     "retrieval": run_retrieval,
@@ -336,6 +340,7 @@ SUITES = {
     "dedup": run_dedup,
     "quality": run_quality,
     "graph": run_graph,
+    "slack": run_slack,
 }
 SUBSET_SUITES = ("retrieval", "routing")  # the PR gate: the rest stay nightly (ADR-026)
 
@@ -494,6 +499,27 @@ def _print_quality_report(report: dict) -> None:
     _print_cost_latency(report)
 
 
+def _print_slack_report(report: dict) -> None:
+    print("\n=== slack suite (recorded thread fixtures through the runner + live API — M8) ===")
+    header = f"{'case':<18} {'result':<6}  detail"
+    print(header)
+    print("-" * 110)
+    for r in report["rows"]:
+        print(f"{r['case']:<18} {'PASS' if r['ok'] else 'FAIL':<6}  {r['detail'][:100]}")
+    agg = report["aggregates"]
+    print("-" * 110)
+    floor_note = (
+        f"floor {report['floor']:.2f} pass rate"
+        if report.get("floor") is not None
+        else "report-only, no floor yet (ADR-026: floors need a baseline)"
+    )
+    print(
+        f"cases: {agg['cases_passed']}/{agg['n']} ({floor_note}) | "
+        f"suite: {'PASS' if report['passed'] else 'FAIL'}"
+    )
+    _print_cost_latency(report)
+
+
 def _print_graph_report(report: dict) -> None:
     print("\n=== graph suite (plain RAG vs Graph-RAG on multi-hop questions — ADR-036) ===")
     header = (
@@ -550,6 +576,7 @@ _PRINTERS = {
     "dedup": _print_dedup_report,
     "quality": _print_quality_report,
     "graph": _print_graph_report,
+    "slack": _print_slack_report,
 }
 
 
@@ -600,6 +627,13 @@ def _summary_rows(report: dict) -> list[tuple[str, str, str, str]]:
             )
         ]
         rows += [("e2e", r["flow"], "PASS" if r["ok"] else "FAIL", "—") for r in report["rows"]]
+        return rows
+    if report["suite"] == "slack":
+        floor = (
+            f"≥ {report['floor']:.2f} rate" if report.get("floor") is not None else "report-only"
+        )
+        rows = [("slack", "cases passed", f"{agg['cases_passed']}/{agg['n']}", floor)]
+        rows += [("slack", r["case"], "PASS" if r["ok"] else "FAIL", "—") for r in report["rows"]]
         return rows
     if report["suite"] == "dedup":
         link = f"{agg['link_accuracy']:.3f}" if agg["link_accuracy"] is not None else "—"
@@ -766,7 +800,7 @@ def main() -> int:
         "--subset",
         action="store_true",
         help="cost-capped PR gate (ADR-026): full retrieval + the 10 flagged routing cases; "
-        "e2e, dedup, and quality are skipped (nightly-only). Overrides --suite.",
+        "the other suites are skipped (nightly-only). Overrides --suite.",
     )
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--threshold", type=float, help="override stage-1 threshold (tuning)")

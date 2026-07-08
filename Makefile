@@ -1,4 +1,4 @@
-.PHONY: dev api ui approvals ingest test eval eval-subset ci-local lint db-up db-down migrate generate seed reset
+.PHONY: dev api ui approvals slack mcp ingest test eval eval-subset ci-local lint db-up db-down migrate generate seed reset
 
 # --- M0: database + data ---------------------------------------------------------------------------
 
@@ -41,6 +41,14 @@ ui:  ## Streamlit only (expects the API on :8000, or API_URL set)
 
 approvals:  ## manager approval view (M2 HITL; expects the API on :8000, or API_URL set)
 	streamlit run ui/approval_view.py --server.port 8502
+
+# --- M8: Slack + MCP ---------------------------------------------------------------------------
+
+slack:  ## Socket Mode Slack runner (M8; needs SLACK_BOT_TOKEN + SLACK_APP_TOKEN — see SLACK_SETUP.md — and the API up)
+	python -m app.slack.runner
+
+mcp:  ## MCP server on :8090 (M8; needs MCP_TOKENS="token=email" — see README "MCP server")
+	python -m mcp_server.server
 
 test:  ## run unit tests
 	pytest tests/

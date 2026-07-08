@@ -2,21 +2,25 @@
 # Implemented in M1 (router run + structured citations); M2 added multi-turn continuity via
 # session_id (ADR-019). M3 added the semantic-cache pre-check (ADR-023); M5 swapped the session
 # backend to Postgres (ADR-030) and added the user-facts inject/extract hooks (ADR-031).
+# M8 added the Slack source fields + the injection-guardrail tripwire contract (ADR-039/041).
 
 from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, Literal
 
-from agents import Runner
+from agents import InputGuardrailTripwireTriggered, Runner
 from agents.extensions.memory import SQLAlchemySession
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.agents.context import ChatContext
 from app.agents.router import router_agent
 from app.cache import semantic_cache
+from app.db.database import SessionLocal
+from app.db.models import User
 from app.memory import extraction, user_facts
 from app.memory.session_store import get_session_store
 
@@ -35,9 +39,19 @@ def _load_session(session_id: str | None) -> SQLAlchemySession | None:
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(min_length=1, max_length=4000)
+    message: str = Field(min_length=1, max_length=8000)  # 8000: Slack thread envelopes (M8)
     user_id: str | None = None  # trusted identity for tools (ChatContext) — never an LLM arg
     session_id: str | None = None  # client-generated; same id = same conversation (ADR-019)
+    # M8 Slack ingestion (ADR-039). These fields come from the Socket Mode runner — a trusted
+    # API client, same trust level as user_id (the M0 assumption: clients are authenticated
+    # infrastructure, not end users). source="slack" arms the injection guardrail and turns
+    # OFF the chat-only conveniences; the thread coordinates let post_slack_message reply.
+    source: Literal["chat", "slack"] = "chat"
+    slack_channel: str | None = None
+    slack_thread_ts: str | None = None
+    # Set by the runner on its ONE bounded re-submit after a guardrail trip (ADR-041):
+    # the screen already fired and its finding is disclosed in the message preamble.
+    injection_screened: bool = False
 
 
 class Citation(BaseModel):
@@ -51,6 +65,9 @@ class ChatResponse(BaseModel):
     agent: str  # which agent produced the final answer (router vs knowledge = routing visibility)
     citations: list[Citation]
     cached: bool = False  # True = served from the semantic cache, no agent ran (M3, ADR-023)
+    # True = the M8 injection guardrail tripped and NO agent acted (ADR-041). The Slack runner
+    # reacts by re-submitting once with injection_screened=True + a security preamble.
+    flagged: bool = False
 
 
 def _collect_citations(items: list[Any]) -> list[Citation]:
@@ -106,18 +123,23 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatR
     # agent the router hands off to) sees them without re-reading the table. Extract half:
     # queued now, runs AFTER the response is sent (BackgroundTasks) on whichever branch below
     # returns — a slow or failed extraction can never delay or break the reply.
-    if first_turn and session is not None and request.user_id:
-        facts_item = await asyncio.to_thread(user_facts.injection_message, request.user_id)
-        if facts_item is not None:
-            await session.add_items([facts_item])
-    background_tasks.add_task(
-        extraction.extract_and_store, request.user_id, request.message, request.session_id
-    )
+    # Chat-source only (ADR-039): a Slack envelope quotes OTHER people's messages — extracting
+    # "user facts" from multi-author untrusted text would poison the acting user's memory.
+    if request.source == "chat":
+        if first_turn and session is not None and request.user_id:
+            facts_item = await asyncio.to_thread(user_facts.injection_message, request.user_id)
+            if facts_item is not None:
+                await session.add_items([facts_item])
+        background_tasks.add_task(
+            extraction.extract_and_store, request.user_id, request.message, request.session_id
+        )
 
     # Semantic-cache pre-check (ADR-023): BEFORE any agent runs. Only read-only (knowledge)
     # answers are ever STORED, so a hit can never re-play an order or a ticket. to_thread:
     # the lookup does sync Redis + (on non-empty cache) one embedding call.
-    if first_turn:
+    # Chat-source only (ADR-039): a Slack report exists to become a ticket — serving it a
+    # stored knowledge ANSWER (however similar the text) would silently drop the report.
+    if first_turn and request.source == "chat":
         hit = await asyncio.to_thread(semantic_cache.lookup, request.message)
         if hit is not None:
             if session is not None:
@@ -136,19 +158,66 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatR
                 cached=True,
             )
 
-    result = await Runner.run(
-        router_agent,
-        request.message,
-        context=ChatContext(user_id=request.user_id),
-        session=session,
-    )
+    try:
+        result = await Runner.run(
+            router_agent,
+            request.message,
+            context=ChatContext(
+                user_id=request.user_id,
+                source=request.source,
+                slack_channel=request.slack_channel,
+                slack_thread_ts=request.slack_thread_ts,
+                injection_screened=request.injection_screened,
+            ),
+            session=session,
+        )
+    except InputGuardrailTripwireTriggered as exc:
+        # M8 injection screen (ADR-041): the run was halted BEFORE any agent acted. Not an
+        # HTTP error — the flag is a first-class outcome the Slack runner reacts to (one
+        # re-submit with injection_screened=True and a security preamble).
+        verdict = getattr(exc.guardrail_result.output, "output_info", None)
+        evidence = getattr(verdict, "evidence", "") or ""
+        return ChatResponse(
+            answer=(
+                "Input flagged by the injection screen; no agent ran. "
+                f"Evidence: {evidence or 'n/a'}"
+            ),
+            agent="guardrail",
+            citations=[],
+            flagged=True,
+        )
     answer = str(result.final_output)
     citations = _collect_citations(result.new_items)
 
     # Write side of the read-only guarantee: knowledge answers with evidence only (never
     # fulfillment/incident, never refusals) — and only first-turn ones, symmetric with lookup.
+    # Source-gated like the lookup (M8): a misrouted Slack envelope answered by the knowledge
+    # agent must not become a cache entry keyed on envelope text.
     citation_dicts = [c.model_dump() for c in citations]
-    if first_turn and semantic_cache.is_cacheable(result.last_agent.name, answer, citation_dicts):
+    if (
+        first_turn
+        and request.source == "chat"
+        and semantic_cache.is_cacheable(result.last_agent.name, answer, citation_dicts)
+    ):
         await asyncio.to_thread(semantic_cache.store, request.message, answer, citation_dicts)
 
     return ChatResponse(answer=answer, agent=result.last_agent.name, citations=citations)
+
+
+class IdentityResolveResponse(BaseModel):
+    found: bool
+    name: str | None = None  # display name for the runner's replies; never an id
+
+
+@router.get("/identity/resolve", response_model=IdentityResolveResponse)
+async def resolve_identity(email: str) -> IdentityResolveResponse:
+    """Does this email map to a service-desk user? The Slack runner's fail-closed pre-check
+    (ADR-039): an unmatched Slack profile never reaches the pipeline — the runner posts a
+    deterministic fallback reply instead of letting an agent act with no resolvable identity."""
+
+    def _lookup() -> User | None:
+        with SessionLocal() as s:
+            return s.scalar(select(User).where(User.email == email))
+
+    user = await asyncio.to_thread(_lookup)
+    return IdentityResolveResponse(found=user is not None, name=user.name if user else None)
