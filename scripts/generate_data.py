@@ -16,7 +16,11 @@ Run:  python scripts/generate_data.py --stage 1                 # taxonomy only 
       python scripts/generate_data.py --stage 2                 # full records (LLM prose; needs a key)
       python scripts/generate_data.py --stage 2 --dry-run       # templated prose, no LLM, no cost
 """
-# Implemented in M0.
+# Implemented in M0. M9 added the CMDB graph (taxonomy `infrastructure` section -> cis.json +
+# dependencies.json, runbook articles, CI tickets) via MERGE-APPEND: existing records are never
+# rewritten (committed eval datasets and the dedup suite reference their ids), and the new
+# runbook/ticket prose is deterministic templates in BOTH modes — those bodies carry the graph
+# eval's ground truth, and LLM prose could garble the facts (ADR-036).
 
 from __future__ import annotations
 
@@ -633,6 +637,193 @@ def _gen_positive_space(tax: dict, *, force: bool) -> None:
     _write("positive_space.json", payload, force=force)
 
 
+def _merge_append(name: str, new_rows: list[dict]) -> None:
+    """Append rows (keyed by id) to an EXISTING generated file without touching what's there.
+
+    M9 adds CI runbook articles/tickets to files whose other records are referenced by
+    committed eval datasets and the dedup suite's seeded groups — regeneration must show
+    only intended additions in the diff, never churn."""
+    path = DATA_DIR / name
+    existing = json.loads(path.read_text()) if path.exists() else []
+    have = {r["id"] for r in existing}
+    added = [r for r in new_rows if r["id"] not in have]
+    if not added:
+        print(f"  {name}: all {len(new_rows)} infra rows already present")
+        return
+    path.write_text(json.dumps(existing + added, indent=2) + "\n")
+    print(f"  wrote {name} (+{len(added)} rows, {len(existing)} kept)")
+
+
+def _service_runbook_section(svc: dict, infra: dict) -> str:
+    """One service's section of a runbook: its ONE-HOP facts only (both directions). Multi-hop
+    questions therefore require chaining runbooks — the fair-comparison design (ADR-036)."""
+    slug = svc["slug"]
+    called_by = [s["slug"] for s in infra["services"] if slug in s["calls"]]
+    teams = [t["slug"] for t in infra["teams"] if slug in t["uses"]]
+    lines = [f"## {slug}", "", svc["description"], ""]
+    lines.append(f"- Runs on: {', '.join(svc['runs_on'])}")
+    if svc["uses"]:
+        lines.append(f"- Uses databases: {', '.join(svc['uses'])}")
+    if svc["calls"]:
+        lines.append(f"- Depends on services: {', '.join(svc['calls'])}")
+    if called_by:
+        lines.append(f"- Direct consumers (services that call {slug}): {', '.join(called_by)}")
+    if teams:
+        lines.append(f"- Used directly by: {', '.join(teams)}")
+    lines += [
+        "",
+        f"If {slug} is degraded, the direct consumers listed above are impacted first. "
+        "Check the health of the servers and databases it runs on before restarting, "
+        "and open an incident ticket referencing the service name.",
+    ]
+    return "\n".join(lines)
+
+
+def _database_hosting_body(infra: dict) -> str:
+    """The hosting-map runbook: which database runs on which server, and which services read
+    each database — the join the dependency graph makes trivial."""
+    lines = [
+        "Hosting map for the shared database estate. Databases are platform-owned; the "
+        "services listed against each database read or write it directly.",
+        "",
+    ]
+    for db in infra["databases"]:
+        users = [s["slug"] for s in infra["services"] if db["slug"] in s["uses"]]
+        lines.append(
+            f"- {db['slug']}: hosted on {', '.join(db['runs_on'])}; "
+            f"used by {', '.join(users) if users else 'no services'}"
+        )
+    lines += [
+        "",
+        "A db-server outage impacts every database hosted on it, and in turn every service "
+        "using those databases. Report db-server incidents against the server name.",
+    ]
+    return "\n".join(lines)
+
+
+def _gen_infrastructure(tax: dict, users: list[dict], *, force: bool) -> None:
+    """M9 CMDB: CIs + dependency edges (new files) and runbook articles + CI tickets
+    (merge-appended). Everything here is deterministic — no LLM in either mode."""
+    infra = tax["infrastructure"]
+
+    # --- nodes -------------------------------------------------------------------------------
+    cis: list[dict] = []
+
+    def add_ci(slug: str, ci_type: str, owner_org: str | None, description: str | None):
+        cis.append(
+            {
+                "id": stable_id("ci", slug),
+                "name": slug,
+                "ci_type": ci_type,
+                "owner_org": owner_org,
+                "description": description,
+            }
+        )
+
+    for team in infra["teams"]:
+        add_ci(team["slug"], "team", team["org"], f"All users in the {team['org']} org.")
+    for svc in infra["services"]:
+        add_ci(svc["slug"], "service", svc["owner_org"], svc["description"])
+    for server in infra["servers"]:
+        add_ci(server, "server", None, None)
+    for db in infra["databases"]:
+        add_ci(db["slug"], "database", None, None)
+
+    # --- edges (dependent DEPENDS ON dependency) ----------------------------------------------
+    deps: list[dict] = []
+
+    def add_edge(dependent: str, dependency: str, dep_type: str):
+        deps.append(
+            {
+                "id": stable_id("dep", f"{dependent}->{dependency}"),
+                "dependent_id": stable_id("ci", dependent),
+                "dependency_id": stable_id("ci", dependency),
+                "dep_type": dep_type,
+            }
+        )
+
+    for svc in infra["services"]:
+        for server in svc["runs_on"]:
+            add_edge(svc["slug"], server, "runs_on")
+        for db in svc["uses"]:
+            add_edge(svc["slug"], db, "uses")
+        for callee in svc["calls"]:
+            add_edge(svc["slug"], callee, "calls")
+    for db in infra["databases"]:
+        for server in db["runs_on"]:
+            add_edge(db["slug"], server, "runs_on")
+    for team in infra["teams"]:
+        for svc_slug in team["uses"]:
+            add_edge(team["slug"], svc_slug, "uses")
+
+    _write("cis.json", cis, force=force)
+    _write("dependencies.json", deps, force=force)
+
+    # --- runbook articles (merge-append; deterministic bodies, see module docstring) ----------
+    by_slug = {s["slug"]: s for s in infra["services"]}
+    articles, chunks = [], []
+    for art in infra["ci_articles"]:
+        if art["slug"] == "runbook-database-hosting":
+            body = _database_hosting_body(infra)
+        else:
+            body = "\n\n".join(_service_runbook_section(by_slug[s], infra) for s in art["covers"])
+        aid = stable_id("article", art["slug"])
+        articles.append(
+            {
+                "id": aid,
+                "title": art["title"],
+                "body": body,
+                "category": art["category"],
+                "doc_type": "product",
+                "version": None,
+                "status": "published",
+            }
+        )
+        for i, content in enumerate(_chunk(body)):
+            chunks.append(
+                {
+                    "id": stable_id("chunk", f"{art['slug']}:{i}"),
+                    "article_id": aid,
+                    "chunk_index": i,
+                    "content": content,
+                    "category": art["category"],
+                    "doc_type": "product",
+                    "status": "published",
+                    "version": None,
+                }
+            )
+    _merge_append("knowledge_articles.json", articles)
+    _merge_append("article_chunks.json", chunks)
+
+    # --- CI-referencing tickets (merge-append) — so the ticket corpus, like the article corpus,
+    # actually mentions these CIs by name (fair-comparison requirement, ADR-036). Topics are
+    # deliberately far from the dedup suite's seeded groups (exchange/vpn-drops/slow-laptop/
+    # printer-offline): new OPEN tickets become dedup candidates the moment they're seeded.
+    rnd = random.Random(RANDOM_SEED + 3)
+    employees = [u for u in users if u["role"] == "employee" and u["email"] != "demo.user@corp.com"]
+    tickets = []
+    for t in infra["ci_tickets"]:
+        reporter = rnd.choice(employees)
+        tickets.append(
+            {
+                "id": stable_id("ticket", t["slug"]),
+                "user_id": reporter["id"],
+                "asset_id": None,
+                "type": "incident",
+                "title": t["title"],
+                "description": (
+                    f"Since this morning, {t['title'].rstrip('.')}. Several colleagues on my "
+                    f"team see the same thing, and the error page references {t['ci']}. "
+                    "Nothing changed on my machine."
+                ),
+                "category": "software",
+                "priority": t["priority"],
+                "status": t["status"],
+            }
+        )
+    _merge_append("tickets.json", tickets)
+
+
 def stage2(force: bool, dry: bool) -> None:
     print(f"Stage 2: full records{' (dry-run: templated prose, no LLM)' if dry else ''}")
     tax = json.loads((DATA_DIR / "taxonomy.json").read_text())
@@ -644,6 +835,7 @@ def stage2(force: bool, dry: bool) -> None:
     _gen_articles(tax, force=force, dry=dry)  # last: the expensive LLM step
     _gen_evalset(tax, force=force)
     _gen_positive_space(tax, force=force)
+    _gen_infrastructure(tax, users, force=force)  # M9: after articles/tickets exist (it appends)
     print("Stage 2 complete. Next: make seed")
 
 

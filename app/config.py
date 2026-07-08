@@ -51,6 +51,16 @@ class Settings(BaseSettings):
     )
     response_cache_ttl_seconds: int = 300  # 5 min — catalog/asset reads (ADR-025)
 
+    # --- CMDB graph (M9, ADR-037) ---
+    # Traversal backend for query_dependency_graph: "postgres" (recursive CTE — the default;
+    # no extra infrastructure) or "neo4j" (requires the compose neo4j service + a sync run:
+    # `python -m graph.sync_neo4j`). Neo4j absent => the postgres path is unaffected and the
+    # neo4j path fails loudly, never silently.
+    graph_backend: str = "postgres"
+    neo4j_uri: str = "bolt://localhost:7687"
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = "agentdesk"  # dev default; mirrors docker-compose NEO4J_AUTH
+
     # --- observability (M6) ---
     langfuse_public_key: str = ""
     langfuse_secret_key: str = ""
@@ -68,6 +78,7 @@ class Settings(BaseSettings):
         "judge_model",
         "hitl_approval_threshold_usd",
         "retrieval_refusal_threshold",
+        "graph_backend",
         mode="before",
     )
     @classmethod

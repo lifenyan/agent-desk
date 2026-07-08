@@ -3298,5 +3298,71 @@
     "category": "email",
     "priority": "low",
     "status": "resolved"
+  },
+  {
+    "id": "73ce3c03-9eed-5301-87b7-d0fac526a847",
+    "user_id": "f9e9f9f7-caf8-5b9a-b66a-c04609f3b9f4",
+    "asset_id": null,
+    "type": "incident",
+    "title": "crm-service returning 502 errors",
+    "description": "Since this morning, crm-service returning 502 errors. Several colleagues on my team see the same thing, and the error page references crm-service. Nothing changed on my machine.",
+    "category": "software",
+    "priority": "high",
+    "status": "open"
+  },
+  {
+    "id": "32156b4b-c1da-5441-a0aa-1b3b687f8c0c",
+    "user_id": "76d58f1e-7b4d-5e0f-a9c6-0be12770e594",
+    "asset_id": null,
+    "type": "incident",
+    "title": "hr-portal shows an internal server error",
+    "description": "Since this morning, hr-portal shows an internal server error. Several colleagues on my team see the same thing, and the error page references hr-portal. Nothing changed on my machine.",
+    "category": "software",
+    "priority": "medium",
+    "status": "open"
+  },
+  {
+    "id": "7a4e87f6-f1d4-5961-83ee-33f0f25c0cc7",
+    "user_id": "b4a76aea-b9eb-5f96-a6e6-8f6f9ffb614d",
+    "asset_id": null,
+    "type": "incident",
+    "title": "payroll-service nightly batch failed",
+    "description": "Since this morning, payroll-service nightly batch failed. Several colleagues on my team see the same thing, and the error page references payroll-service. Nothing changed on my machine.",
+    "category": "software",
+    "priority": "high",
+    "status": "open"
+  },
+  {
+    "id": "9fd2f79f-7154-50e8-9685-c2df5105bbc0",
+    "user_id": "4c6d8343-65c4-5a0d-9fd1-259617698b0c",
+    "asset_id": null,
+    "type": "incident",
+    "title": "finance-reporting export comes back empty",
+    "description": "Since this morning, finance-reporting export comes back empty. Several colleagues on my team see the same thing, and the error page references finance-reporting. Nothing changed on my machine.",
+    "category": "software",
+    "priority": "medium",
+    "status": "resolved"
+  },
+  {
+    "id": "328adc15-cdba-508b-9cb0-19b42365f79f",
+    "user_id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
+    "asset_id": null,
+    "type": "incident",
+    "title": "astracore-api webhook deliveries failing",
+    "description": "Since this morning, astracore-api webhook deliveries failing. Several colleagues on my team see the same thing, and the error page references astracore-api. Nothing changed on my machine.",
+    "category": "software",
+    "priority": "medium",
+    "status": "resolved"
+  },
+  {
+    "id": "a4e87c06-261b-505b-805a-76a2dacc31df",
+    "user_id": "7713662d-a09c-5c75-87d5-c4ee025017fc",
+    "asset_id": null,
+    "type": "incident",
+    "title": "monitoring-service paging false alarms",
+    "description": "Since this morning, monitoring-service paging false alarms. Several colleagues on my team see the same thing, and the error page references monitoring-service. Nothing changed on my machine.",
+    "category": "software",
+    "priority": "low",
+    "status": "resolved"
   }
 ]

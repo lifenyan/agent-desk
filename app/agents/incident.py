@@ -6,10 +6,15 @@ deterministic in search_similar_tickets (cosine vs DEDUP_SIMILARITY_THRESHOLD=0.
 gray band, where "new report of the same issue" and "similar but different issue" are
 measurably inseparable at the embedding level.
 
+M9 adds the CMDB graph tool (ADR-035): dedup similarity answers "has THIS been reported
+before?"; the dependency graph answers "what does this outage BREAK?" — impact sets, change
+blast radius, shared root cause. The instructions draw that line explicitly so the agent
+doesn't reach for embeddings when the question is structural.
+
 Cross-agent handoff edges (back to the router on intent change) are assembled in router.py —
 importing them here would be circular.
 """
-# Implemented in M2. Formal dedup eval lands in M4.
+# Implemented in M2. Formal dedup eval lands in M4. Graph tool wired in M9.
 
 from __future__ import annotations
 
@@ -19,6 +24,7 @@ from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from app.agents.context import ChatContext
 from app.agents.knowledge import resolve_model
 from app.config import get_settings
+from app.tools.graph_tools import query_dependency_graph_tool
 from app.tools.ticket_tools import (
     add_ticket_comment_tool,
     create_ticket_tool,
@@ -60,6 +66,16 @@ How to handle a report:
    - Otherwise create_ticket with your draft and give the user the new ticket id.
 4. Existing tickets: the user may also ask about updating their OWN tickets (e.g. "close my
    ticket", "bump the priority") — use update_ticket.
+5. Infrastructure impact vs duplicate reports — two different tools:
+   - search_similar_tickets answers "has someone already REPORTED this?" (text similarity).
+   - query_dependency_graph answers "what does this outage BREAK?" — use it whenever a named
+     piece of shared infrastructure (a service like auth-service, a server like db-server-02,
+     a database like crm-db) is down/degraded and impact matters: who/what is affected,
+     change blast radius, or whether several open reports share one root cause
+     (direction="dependencies" for each affected service, then intersect).
+   - Trust the tool's answer as COMPLETE: a CI absent from `nodes` is not affected. Report
+     impacted services and teams (with user counts) by name; set priority from that blast
+     radius (many teams = critical). Never guess dependencies from the name of a thing.
 
 Never invent ticket ids, and never promise a resolution time. End every turn with a
 substantive message to the user — your tool calls are invisible to them, and an empty reply
@@ -80,6 +96,7 @@ incident_agent = Agent[ChatContext](
         create_ticket_tool,
         add_ticket_comment_tool,
         update_ticket_tool,
+        query_dependency_graph_tool,
     ],
     model=resolve_model(get_settings().specialist_model),
     # ADR-018 guards: forced first tool call; reset_tool_choice (default True) frees the

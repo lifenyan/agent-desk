@@ -1798,5 +1798,68 @@
     "doc_type": "onboarding",
     "version": null,
     "status": "published"
+  },
+  {
+    "id": "523fc344-5370-58d3-a4be-f7977193536c",
+    "title": "Runbook: authentication stack (auth-service, sso-gateway, ldap-directory)",
+    "body": "## auth-service\n\nCentral authentication service (tokens, password verification).\n\n- Runs on: app-server-01, app-server-02\n- Uses databases: auth-db\n- Depends on services: ldap-directory\n- Direct consumers (services that call auth-service): sso-gateway, vpn-gateway, email-gateway, astracore-api, payroll-service, crm-service\n\nIf auth-service is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## sso-gateway\n\nSingle-sign-on front door for browser-based internal apps.\n\n- Runs on: web-server-01\n- Depends on services: auth-service\n- Direct consumers (services that call sso-gateway): ticketing-service, hr-portal, finance-reporting\n\nIf sso-gateway is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## ldap-directory\n\nCorporate LDAP directory: user accounts and group membership.\n\n- Runs on: infra-server-01, infra-server-02\n- Uses databases: ldap-db\n- Direct consumers (services that call ldap-directory): auth-service, print-service\n\nIf ldap-directory is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.",
+    "category": "accounts",
+    "doc_type": "product",
+    "version": null,
+    "status": "published"
+  },
+  {
+    "id": "a3083467-1904-594e-9876-a6dc0ed4f06a",
+    "title": "Runbook: AstraCore platform infrastructure",
+    "body": "## astracore-api\n\nAstraCore file-sync & collaboration platform API.\n\n- Runs on: app-server-05, app-server-06\n- Uses databases: astracore-db\n- Depends on services: auth-service\n- Direct consumers (services that call astracore-api): astracore-web\n\nIf astracore-api is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## astracore-web\n\nAstraCore web client.\n\n- Runs on: web-server-02, web-server-03\n- Depends on services: astracore-api\n- Used directly by: team-sales, team-engineering, team-finance, team-hr\n\nIf astracore-web is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.",
+    "category": "software",
+    "doc_type": "product",
+    "version": null,
+    "status": "published"
+  },
+  {
+    "id": "1aaeb2de-2d1d-52b4-9dee-9d5f3ade0217",
+    "title": "Runbook: email-gateway and vpn-gateway",
+    "body": "## email-gateway\n\nCorporate mail routing and delivery.\n\n- Runs on: app-server-03, app-server-04\n- Uses databases: email-db\n- Depends on services: auth-service\n- Used directly by: team-sales, team-engineering, team-finance, team-hr\n\nIf email-gateway is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## vpn-gateway\n\nRemote-access VPN concentrator.\n\n- Runs on: infra-server-03, infra-server-04\n- Depends on services: auth-service\n- Used directly by: team-sales, team-engineering, team-finance\n\nIf vpn-gateway is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.",
+    "category": "network",
+    "doc_type": "product",
+    "version": null,
+    "status": "published"
+  },
+  {
+    "id": "f2726292-e341-55c1-bf30-166a6b655713",
+    "title": "Runbook: CRM and sales analytics stack",
+    "body": "## crm-service\n\nCustomer relationship management backend.\n\n- Runs on: app-server-09, app-server-10\n- Uses databases: crm-db\n- Depends on services: auth-service\n- Direct consumers (services that call crm-service): sales-dashboard\n- Used directly by: team-sales\n\nIf crm-service is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## sales-dashboard\n\nSales analytics dashboards (reads crm-db directly).\n\n- Runs on: web-server-05\n- Uses databases: crm-db\n- Depends on services: crm-service\n- Used directly by: team-sales\n\nIf sales-dashboard is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.",
+    "category": "software",
+    "doc_type": "product",
+    "version": null,
+    "status": "published"
+  },
+  {
+    "id": "137ad791-1ea3-5a25-9ec7-5a743fed8c07",
+    "title": "Runbook: HR, payroll, and finance reporting services",
+    "body": "## hr-portal\n\nEmployee self-service HR portal.\n\n- Runs on: web-server-04\n- Uses databases: hr-db\n- Depends on services: sso-gateway\n- Used directly by: team-hr\n\nIf hr-portal is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## payroll-service\n\nPayroll processing (reads employee data from hr-db).\n\n- Runs on: app-server-08\n- Uses databases: payroll-db, hr-db\n- Depends on services: auth-service\n- Used directly by: team-finance, team-hr\n\nIf payroll-service is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## finance-reporting\n\nFinancial reporting (reads revenue data from crm-db).\n\n- Runs on: web-server-06\n- Uses databases: finance-db, crm-db\n- Depends on services: sso-gateway\n- Used directly by: team-finance\n\nIf finance-reporting is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.",
+    "category": "software",
+    "doc_type": "product",
+    "version": null,
+    "status": "published"
+  },
+  {
+    "id": "31495f83-9c1d-5584-99ef-b2c61eaeef96",
+    "title": "Runbook: ticketing, monitoring, and print services",
+    "body": "## ticketing-service\n\nIT service-desk ticketing backend.\n\n- Runs on: app-server-07\n- Uses databases: tickets-db\n- Depends on services: sso-gateway\n- Used directly by: team-engineering\n\nIf ticketing-service is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## monitoring-service\n\nInfrastructure monitoring and alerting (deliberately standalone).\n\n- Runs on: infra-server-05, infra-server-06\n- Uses databases: monitoring-db\n- Used directly by: team-engineering\n\nIf monitoring-service is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.\n\n## print-service\n\nPrint queue management for office printers.\n\n- Runs on: infra-server-03\n- Depends on services: ldap-directory\n- Used directly by: team-engineering, team-hr\n\nIf print-service is degraded, the direct consumers listed above are impacted first. Check the health of the servers and databases it runs on before restarting, and open an incident ticket referencing the service name.",
+    "category": "software",
+    "doc_type": "product",
+    "version": null,
+    "status": "published"
+  },
+  {
+    "id": "4713e2d6-ef12-596e-837c-8b1378706d89",
+    "title": "Runbook: database hosting map",
+    "body": "Hosting map for the shared database estate. Databases are platform-owned; the services listed against each database read or write it directly.\n\n- auth-db: hosted on db-server-01, db-server-02; used by auth-service\n- ldap-db: hosted on db-server-01; used by ldap-directory\n- email-db: hosted on db-server-03; used by email-gateway\n- astracore-db: hosted on db-server-04, db-server-05; used by astracore-api\n- tickets-db: hosted on db-server-06; used by ticketing-service\n- hr-db: hosted on db-server-06; used by hr-portal, payroll-service\n- payroll-db: hosted on db-server-07; used by payroll-service\n- finance-db: hosted on db-server-07; used by finance-reporting\n- crm-db: hosted on db-server-08; used by crm-service, sales-dashboard, finance-reporting\n- monitoring-db: hosted on db-server-03; used by monitoring-service\n\nA db-server outage impacts every database hosted on it, and in turn every service using those databases. Report db-server incidents against the server name.",
+    "category": "other",
+    "doc_type": "product",
+    "version": null,
+    "status": "published"
   }
 ]

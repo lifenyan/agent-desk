@@ -34,6 +34,8 @@ const { svg } = await mermaid.render('erd-svg', `erDiagram
   CATALOG_ITEMS ||--o{ ORDERS : fulfills
   ASSETS |o--o{ TICKETS : about
   TICKETS ||--o{ TICKET_COMMENTS : has
+  CIS ||--o{ DEPENDENCIES : dependent
+  CIS ||--o{ DEPENDENCIES : dependency
   USERS {
     uuid id PK
     string name
@@ -112,6 +114,19 @@ const { svg } = await mermaid.render('erd-svg', `erDiagram
     string source
     float confidence
     timestamp updated_at
+  }
+  CIS {
+    uuid id PK
+    string name UK "auth-service, db-server-02, ..."
+    string ci_type "service/server/database/team"
+    string owner_org "teams: impact->users rollup"
+    text description
+  }
+  DEPENDENCIES {
+    uuid id PK
+    uuid dependent_id FK "relies on dependency_id"
+    uuid dependency_id FK "UNIQUE together, indexed both"
+    string dep_type "runs_on/uses/calls"
   }`);
 document.getElementById('erd').innerHTML = svg;
 

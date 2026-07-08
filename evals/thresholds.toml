@@ -57,6 +57,18 @@ flow_pass_rate = 1.0
 # deferred cross-encoder decision.
 accuracy = 0.65
 
+[graph]
+# The CTE Graph-RAG arm (incident agent + query_dependency_graph on postgres) scored
+# F1 1.000 with 15/15 exact sets on all three same-day baseline runs (2026-07-07, ADR-036) —
+# the tool returns the literal answer and the agent relays it. 0.8 sits far below that
+# baseline: red means the agent stopped reaching for the graph or systematically garbles its
+# output, while a couple of flubbed relays stay green (ADR-026). The rag arm is deliberately
+# floor-FREE — it is the comparison baseline (measured F1 0.44-0.64 across the same runs,
+# refusal-driven variance), not a product contract. The neo4j arm has no floor either: CI has
+# no Neo4j (the arm self-skips); its gate is the LLM-free backend-parity check, which fails
+# the suite unconditionally on any (name, depth) mismatch.
+cte_f1_mean = 0.8
+
 # [quality] — deliberately ABSENT (report-only), per ADR-026's own rule: a floor needs a
 # baseline plus observed run-to-run variance, and the first three same-day runs already moved
 # 0.6 on faithfulness mean (4.7 -> 4.1 -> 4.5) on identical code — judge-and-agent variance,
