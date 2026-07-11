@@ -72,7 +72,7 @@
           "cost_usd": null
         },
         {
-          "query": "compare AstraCore v5.1 and v5.2",
+          "query": "compare BlueDesk v5.1 and v5.2",
           "kind": "answerable",
           "recall": 1.0,
           "mrr": 1.0,
@@ -83,7 +83,7 @@
           "cost_usd": null
         },
         {
-          "query": "what's new in AstraCore v5.0",
+          "query": "what's new in BlueDesk v5.0",
           "kind": "answerable",
           "recall": 1.0,
           "mrr": 1.0,
@@ -248,7 +248,7 @@
           "cost_usd": null
         },
         {
-          "query": "share a folder in AstraCore",
+          "query": "share a folder in BlueDesk",
           "kind": "answerable",
           "recall": 1.0,
           "mrr": 1.0,
@@ -401,7 +401,7 @@
           "cost_usd": null
         },
         {
-          "query": "restore a previous version of a file in AstraCore",
+          "query": "restore a previous version of a file in BlueDesk",
           "kind": "answerable",
           "recall": 1.0,
           "mrr": 1.0,
@@ -1488,8 +1488,8 @@
           "judge_cost_usd": 0.007661
         },
         {
-          "query": "What's new in AstraCore v5.2 compared to v5.1?",
-          "answer": "I checked the release notes for both versions. Summary of what\u2019s new in AstraCore v5.2 vs v5.1:\n\n- Reporting: v5.2 adds customizable report templates and new visualization types (pie charts, line graphs). v5.1 introduced a comprehensive reporting module with multi-format export (PDF/Excel/CSV) [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- API: v5.2 introduces AstraCore API v2.0 with new endpoints for third\u2011party integrations and adds OAuth 2.0 support for API access. v5.1 added support for specific third\u2011party integrations (Salesforce, HubSpot) and improved API documentation [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- Performance and resource usage: both note a ~30% improvement in data retrieval from optimized DB queries. v5.1 explicitly reported a 15% reduction in background memory usage; v5.2 also states reduced memory usage in background services but does not give a percent [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- UI/accessibility: both releases list dashboard/UI improvements and accessibility updates (ADA) \u2014 no major UI feature listed as unique to v5.2 in the notes [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- Bug fixes / stability: v5.2 specifically fixes slow loading on the analytics page and synchronization problems with external data sources. v5.1 focused on resolving intermittent login failures, notification delays, and data sync errors [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].  \n- Upgrade guidance and known issues: v5.2 includes upgrade steps and lists minor known UI glitches in some browsers and potential third\u2011party compatibility updates; v5.1 noted API rate limiting during peak hours and some mobile UI compatibility issues [AstraCore v5.2 release notes] [AstraCore v5.1 release notes].\n\nSources:\n- AstraCore v5.2 release notes (2b66711b-9535-5c42-b9cf-01694607024d)  \n- AstraCore v5.1 release notes (58d96b3b-de9a-5e9f-aa29-b8ba1d17d76e)\n\nIf you want, I can provide the exact upgrade steps from the v5.2 notes or check whether any of your installed third\u2011party integrations need updates.",
+          "query": "What's new in BlueDesk v5.2 compared to v5.1?",
+          "answer": "I checked the release notes for both versions. Summary of what\u2019s new in BlueDesk v5.2 vs v5.1:\n\n- Reporting: v5.2 adds customizable report templates and new visualization types (pie charts, line graphs). v5.1 introduced a comprehensive reporting module with multi-format export (PDF/Excel/CSV) [BlueDesk v5.2 release notes] [BlueDesk v5.1 release notes].  \n- API: v5.2 introduces BlueDesk API v2.0 with new endpoints for third\u2011party integrations and adds OAuth 2.0 support for API access. v5.1 added support for specific third\u2011party integrations (Salesforce, HubSpot) and improved API documentation [BlueDesk v5.2 release notes] [BlueDesk v5.1 release notes].  \n- Performance and resource usage: both note a ~30% improvement in data retrieval from optimized DB queries. v5.1 explicitly reported a 15% reduction in background memory usage; v5.2 also states reduced memory usage in background services but does not give a percent [BlueDesk v5.2 release notes] [BlueDesk v5.1 release notes].  \n- UI/accessibility: both releases list dashboard/UI improvements and accessibility updates (ADA) \u2014 no major UI feature listed as unique to v5.2 in the notes [BlueDesk v5.2 release notes] [BlueDesk v5.1 release notes].  \n- Bug fixes / stability: v5.2 specifically fixes slow loading on the analytics page and synchronization problems with external data sources. v5.1 focused on resolving intermittent login failures, notification delays, and data sync errors [BlueDesk v5.2 release notes] [BlueDesk v5.1 release notes].  \n- Upgrade guidance and known issues: v5.2 includes upgrade steps and lists minor known UI glitches in some browsers and potential third\u2011party compatibility updates; v5.1 noted API rate limiting during peak hours and some mobile UI compatibility issues [BlueDesk v5.2 release notes] [BlueDesk v5.1 release notes].\n\nSources:\n- BlueDesk v5.2 release notes (2b66711b-9535-5c42-b9cf-01694607024d)  \n- BlueDesk v5.1 release notes (58d96b3b-de9a-5e9f-aa29-b8ba1d17d76e)\n\nIf you want, I can provide the exact upgrade steps from the v5.2 notes or check whether any of your installed third\u2011party integrations need updates.",
           "faithfulness": 5,
           "faithfulness_justification": "All summarized differences (reporting, API, performance, UI/accessibility, bug fixes, upgrade notes, known issues) are directly supported by the provided v5.1 and v5.2 release notes.",
           "helpfulness": 5,

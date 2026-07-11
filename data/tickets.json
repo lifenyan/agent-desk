@@ -3348,8 +3348,8 @@
     "user_id": "56d0927d-7d93-5c0b-a4d7-422c25ad60cd",
     "asset_id": null,
     "type": "incident",
-    "title": "astracore-api webhook deliveries failing",
-    "description": "Since this morning, astracore-api webhook deliveries failing. Several colleagues on my team see the same thing, and the error page references astracore-api. Nothing changed on my machine.",
+    "title": "bluedesk-api webhook deliveries failing",
+    "description": "Since this morning, bluedesk-api webhook deliveries failing. Several colleagues on my team see the same thing, and the error page references bluedesk-api. Nothing changed on my machine.",
     "category": "software",
     "priority": "medium",
     "status": "resolved"

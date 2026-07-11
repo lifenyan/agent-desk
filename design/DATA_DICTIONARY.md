@@ -86,7 +86,7 @@ A user's request for a catalog item — the "service request" side of ITSM (kept
 
 ## tickets
 
-Unified ticket table. Real ITSM (ITIL/ServiceNow) splits incidents, requests, changes, and problems into separate entities; this project simplifies to one table with a `type` discriminator, with catalog `orders` covering the service-request flow separately — an informed simplification, not an accidental one.
+Unified ticket table. Real ITSM (ITIL) splits incidents, requests, changes, and problems into separate entities; this project simplifies to one table with a `type` discriminator, with catalog `orders` covering the service-request flow separately — an informed simplification, not an accidental one.
 
 | Column | Type | Notes |
 |---|---|---|

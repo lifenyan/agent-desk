@@ -60,27 +60,27 @@
       ]
     },
     {
-      "query": "compare AstraCore v5.1 and v5.2",
+      "query": "compare BlueDesk v5.1 and v5.2",
       "expected_articles": [
         {
-          "slug": "astracore-v5.1",
-          "title": "AstraCore v5.1 release notes",
+          "slug": "bluedesk-v5.1",
+          "title": "BlueDesk v5.1 release notes",
           "category": "software"
         },
         {
-          "slug": "astracore-v5.2",
-          "title": "AstraCore v5.2 release notes",
+          "slug": "bluedesk-v5.2",
+          "title": "BlueDesk v5.2 release notes",
           "category": "software"
         }
       ],
       "note": "compare v5.1 vs v5.2 metadata-filter case"
     },
     {
-      "query": "what's new in AstraCore v5.0",
+      "query": "what's new in BlueDesk v5.0",
       "expected_articles": [
         {
-          "slug": "astracore-v5.0",
-          "title": "AstraCore v5.0 release notes",
+          "slug": "bluedesk-v5.0",
+          "title": "BlueDesk v5.0 release notes",
           "category": "software"
         }
       ]
@@ -233,11 +233,11 @@
       "note": "must prefer current over outdated printer-add-legacy"
     },
     {
-      "query": "share a folder in AstraCore",
+      "query": "share a folder in BlueDesk",
       "expected_articles": [
         {
-          "slug": "astracore-share",
-          "title": "Sharing files and folders in AstraCore",
+          "slug": "bluedesk-share",
+          "title": "Sharing files and folders in BlueDesk",
           "category": "software"
         }
       ]

@@ -4,7 +4,7 @@ Working brief for Claude Code. Read this first each session, then `README.md` (f
 
 ## What this is
 
-An AI-powered ITSM service desk (mini ServiceNow) — a **portfolio project**. A tool-less **router agent** classifies each query and hands off to one of three specialists:
+An AI-powered ITSM service desk — a **portfolio project**. A tool-less **router agent** classifies each query and hands off to one of three specialists:
 
 - **knowledge** — query expansion, hybrid RAG (pgvector + FTS, reciprocal rank fusion), citations
 - **fulfillment** — reads user assets, pre-fills catalog orders, human-in-the-loop approval for orders > $500

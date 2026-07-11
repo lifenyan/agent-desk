@@ -1,6 +1,6 @@
 # agentdesk
 
-**An AI-powered ITSM service desk (a mini ServiceNow): a router agent routes each query to specialist agents for knowledge search, catalog fulfillment, and incident management — with hybrid RAG, semantic caching, long-term memory, and human-in-the-loop approvals.**
+**An AI-powered ITSM service desk: a router agent routes each query to specialist agents for knowledge search, catalog fulfillment, and incident management — with hybrid RAG, semantic caching, long-term memory, and human-in-the-loop approvals.**
 
 ## Tech Stack
 

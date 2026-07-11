@@ -1,6 +1,6 @@
 # ITSM AI Service Desk
 
-An AI-powered IT service management desk — a mini ServiceNow where a multi-agent system answers knowledge questions, fulfills software orders, and manages incident tickets end to end.
+An AI-powered IT service management desk where a multi-agent system answers knowledge questions, fulfills software orders, and manages incident tickets end to end.
 
 Built as a portfolio project to demonstrate applied AI engineering: multi-agent orchestration with LLM-driven handoffs, hybrid RAG, three-layer caching, hand-rolled long-term memory, human-in-the-loop approvals, evaluation harnesses in CI, observability, MCP integration, and Graph-RAG over a CMDB dependency graph.
 

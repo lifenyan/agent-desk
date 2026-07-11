@@ -64,17 +64,17 @@
   },
   {
     "id": "b40501a8-0635-5910-946b-ad01a9a55127",
-    "name": "astracore-api",
+    "name": "bluedesk-api",
     "ci_type": "service",
     "owner_org": "engineering",
-    "description": "AstraCore file-sync & collaboration platform API."
+    "description": "BlueDesk file-sync & collaboration platform API."
   },
   {
     "id": "698df49e-3e4f-57a2-8065-4ca00c17827a",
-    "name": "astracore-web",
+    "name": "bluedesk-web",
     "ci_type": "service",
     "owner_org": "engineering",
-    "description": "AstraCore web client."
+    "description": "BlueDesk web client."
   },
   {
     "id": "53ef9cfe-990b-574e-b3dd-4558ae8586de",
@@ -365,7 +365,7 @@
   },
   {
     "id": "f31f7a98-4588-53db-9286-3a95c4e3bdf9",
-    "name": "astracore-db",
+    "name": "bluedesk-db",
     "ci_type": "database",
     "owner_org": null,
     "description": null
