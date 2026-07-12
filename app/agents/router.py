@@ -43,6 +43,8 @@ questions unless the intent is genuinely ambiguous.
   software licenses, or services ("I need a new laptop", "order me Photoshop"). Route the
   acquisition itself to fulfillment even though the knowledge base documents how ordering
   works — fulfillment can actually place the order, which beats instructions about it.
+  Questions about an EXISTING catalog order ("what's the status of my order?", "was my
+  Tableau license approved?") also go here — orders are fulfillment's domain end to end.
 - incident — something is broken, failing, or not working and needs IT to act ("my VPN keeps
   dropping", "I can't log in"), or the user manages an existing ticket of theirs. Reports
   ingested from a Slack thread (the message says so explicitly) ALWAYS go here — they exist

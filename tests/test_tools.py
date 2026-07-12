@@ -46,7 +46,9 @@ from app.db.models import (  # noqa: E402
 )
 from app.tools.catalog_tools import (  # noqa: E402
     FormValue,
+    _order_summary,
     approve_order,
+    get_my_orders,
     list_catalog_items,
     list_pending_orders,
     place_catalog_order,
@@ -417,6 +419,47 @@ def test_order_validates_form_against_schema(demo_ctx, clean_writes):
         _form_values_for(cheap) + [FormValue(name="gift_wrap", value="yes")],
     )
     assert "unknown form fields" in unknown["error"]
+
+
+def test_get_my_orders_scoped_to_acting_user_with_current_state(
+    demo_ctx, demo_user_id, clean_writes
+):
+    # A fresh order + an out-of-band approval (the manager path, fresh process by design):
+    # the tool must report the POST-approval state — the exact staleness bug this tool fixes.
+    _, pricey = _cheap_and_pricey()
+    draft = place_catalog_order(demo_ctx, pricey["item_id"], _form_values_for(pricey))
+    request_approval(demo_ctx, draft["order"]["order_id"])
+    approve_order(draft["order"]["order_id"])
+
+    payload = get_my_orders(demo_ctx)
+    assert "results" not in payload  # bare key would leak into _collect_citations
+    orders = {o["order_id"]: o for o in payload["orders"]}
+    approved = orders[draft["order"]["order_id"]]
+    assert approved["approval_state"] == ApprovalState.approved
+    assert approved["summary"] == "approved by the manager — order placed"
+    with SessionLocal() as s:
+        foreign = set(map(str, s.scalars(select(Order.id).where(Order.user_id != demo_user_id))))
+    assert not foreign & set(orders)  # never another user's orders
+
+
+def test_get_my_orders_requires_identity():
+    assert "no acting user" in get_my_orders(ctx_for(None))["error"]
+
+
+def test_order_summary_covers_the_state_machine():
+    def order_in(status, approval_state):
+        return Order(status=status, approval_state=approval_state)
+
+    cases = {
+        (OrderStatus.draft, ApprovalState.not_required): "draft — not yet submitted",
+        (OrderStatus.submitted, ApprovalState.pending): "awaiting manager approval",
+        (OrderStatus.submitted, ApprovalState.approved): "approved by the manager — order placed",
+        (OrderStatus.submitted, ApprovalState.not_required): "placed (no approval needed)",
+        (OrderStatus.fulfilled, ApprovalState.not_required): "fulfilled — delivered/provisioned",
+        (OrderStatus.cancelled, ApprovalState.rejected): "rejected by the manager and cancelled",
+    }
+    for (status, approval_state), expected in cases.items():
+        assert _order_summary(order_in(status, approval_state)) == expected
 
 
 def test_request_approval_on_foreign_order_is_refused(demo_ctx, demo_user_id):

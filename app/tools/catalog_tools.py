@@ -66,6 +66,23 @@ def _validate_form_values(item: CatalogItem, form_values: list[FormValue]) -> di
     return None
 
 
+def _order_summary(order: Order) -> str:
+    """One human-readable line for the order's CURRENT position in the ADR-020 state machine."""
+    if order.status == OrderStatus.draft:
+        return "draft — not yet submitted"
+    if order.status == OrderStatus.cancelled:
+        if order.approval_state == ApprovalState.rejected:
+            return "rejected by the manager and cancelled"
+        return "cancelled"
+    if order.status == OrderStatus.fulfilled:
+        return "fulfilled — delivered/provisioned"
+    if order.approval_state == ApprovalState.pending:
+        return "awaiting manager approval"
+    if order.approval_state == ApprovalState.approved:
+        return "approved by the manager — order placed"
+    return "placed (no approval needed)"
+
+
 def _order_payload(order: Order, item: CatalogItem) -> dict:
     return {
         "order": {
@@ -116,6 +133,39 @@ def list_catalog_items(os_filter: OS | None = None) -> dict:
                 }
                 for i in items
             ],
+        }
+
+
+def get_my_orders(ctx: RunContextWrapper[ChatContext]) -> dict:
+    """List ALL of the current user's catalog orders with their CURRENT status and approval
+    state. Call this whenever the user asks about an order that already exists ("what's the
+    status of my order?", "was it approved yet?") — approvals happen OUTSIDE this chat in a
+    manager view, so the conversation history is always stale; only this tool is current.
+    """
+    with SessionLocal() as session:
+        user = resolve_acting_user(session, ctx)
+        if isinstance(user, dict):
+            return user
+        orders = session.scalars(select(Order).where(Order.user_id == user.id)).all()
+        entries = []
+        for order in orders:
+            item = session.get(CatalogItem, order.item_id)
+            entries.append(
+                {
+                    "order_id": str(order.id),
+                    "item": item.name,
+                    "price_usd": float(item.price),
+                    "status": order.status,
+                    "approval_state": order.approval_state,
+                    "summary": _order_summary(order),
+                }
+            )
+        return {
+            "orders": entries,
+            "guidance": (
+                "Report from `summary` — it already encodes the status/approval_state "
+                "combination. Identify orders to the user by item and price, never by id."
+            ),
         }
 
 
@@ -278,5 +328,6 @@ def reject_order(order_id: str) -> dict:
 
 # --- Agents SDK wrappers (schema derived from the signatures + docstrings above) ---
 list_catalog_items_tool = function_tool(list_catalog_items)
+get_my_orders_tool = function_tool(get_my_orders)
 place_catalog_order_tool = function_tool(place_catalog_order)
 request_approval_tool = function_tool(request_approval)

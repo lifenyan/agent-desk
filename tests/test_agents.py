@@ -74,10 +74,13 @@ def test_knowledge_has_only_retrieval_tools():
 
 
 def test_fulfillment_has_only_ordering_tools():
+    # get_my_orders: deliberate — order-status follow-ups must be answered from the DB, not
+    # conversation memory (approvals happen out-of-band; history is stale by design).
     assert {t.name for t in fulfillment_agent.tools} == {
         "get_user_profile",
         "get_user_assets",
         "list_catalog_items",
+        "get_my_orders",
         "place_catalog_order",
         "request_approval",
     }

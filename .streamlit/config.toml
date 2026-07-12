@@ -1,0 +1,12 @@
+# Base theme for both Streamlit surfaces (chat + approvals) — the detailed styling lives in
+# ui/theme.py. Picked up from CWD: repo root locally (make dev/ui/approvals), /app in Docker
+# (the Dockerfile COPYs this directory).
+[theme]
+base = "dark"
+primaryColor = "#22d3ee"
+backgroundColor = "#0a0f1e"
+secondaryBackgroundColor = "#111827"
+textColor = "#e5e7eb"
+
+[server]
+headless = true
