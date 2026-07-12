@@ -7,7 +7,9 @@
      Corrections this refresh bakes in: sessions live in POSTGRES not Redis (M5, ADR-030);
      M8 surfaces exist (approvals UI, Slack runner, MCP server beside — not behind — the API);
      Neo4j is an OPTIONAL synced projection, the CMDB graph itself is Postgres (ADR-037);
-     "triage" is the router; Langfuse is wired for real (M6, ADR-042). -->
+     "triage" is the router; Langfuse is wired for real (M6, ADR-042).
+     M11 refresh: the chat UI consumes POST /chat/stream (SSE, ADR-048); every other client
+     stays on the frozen /chat JSON contract. -->
 <meta charset="utf-8">
 <style>
   body { margin: 0; background: #ffffff;
@@ -48,8 +50,8 @@
 
   <!-- backend -->
   <div class="node neutral" id="api" style="left:150px; top:210px; width:700px; height:100px;">
-    <b>FastAPI backend</b><span>/chat · /approvals · /identity/resolve · /cache/stats — identity from
-    ChatContext, never an LLM arg (ADR-039) ·<br>semantic-cache pre-check before any agent (chat-only, ADR-023) · Postgres-backed sessions (M5)</span></div>
+    <b>FastAPI backend</b><span>/chat · /chat/stream (SSE, M11) · /approvals · /identity/resolve · /cache/stats — identity
+    from ChatContext, never an LLM arg (ADR-039) ·<br>semantic-cache pre-check before any agent (chat-only, ADR-023) · Postgres-backed sessions (M5)</span></div>
   <div class="node neutral" id="mcpserver" style="left:990px; top:210px; width:330px; height:100px;">
     <b>MCP server :8090</b><span>separate process (M8) · bearer token → acting user ·
     read/create-only tool surface (ADR-040)</span></div>
@@ -93,7 +95,7 @@
 
 <script>
 const edges = [
-  { from: "chatui",      to: "api" },
+  { from: "chatui",      to: "api",       label: "SSE /chat/stream (M11)" },
   { from: "approvals",   to: "api" },
   { from: "slackrunner", to: "api",       label: "source=slack" },
   { from: "mcpclients",  to: "mcpserver" },

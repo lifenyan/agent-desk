@@ -1,12 +1,16 @@
-"""Streamlit chat UI: talks to the FastAPI /chat endpoint, renders citations and agent handoff traces."""
+"""Streamlit chat UI: talks to the FastAPI /chat/stream endpoint, renders citations and agent handoff traces."""
 # Implemented in M1; M2 added per-browser-session continuity (session_id, ADR-019) and the
 # acting-user picker (action agents need a trusted identity). M5 upgrades sessions to Postgres.
 # The visual pass: theme.py + .streamlit/config.toml; citations became links to the /articles
 # page (ids live in URLs only — never displayed), and the answer's "Sources:" footer is
 # stripped for DISPLAY only (the ADR-017 contract text is untouched in the API/cache).
+# M11 (ADR-048): answers stream token-by-token over SSE (POST /chat/stream + st.write_stream);
+# the transcript's source of truth stays the `final` event — a full ChatResponse equivalent —
+# and the frozen POST /chat contract remains the fallback when the stream can't start.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -194,6 +198,24 @@ def _is_refusal(msg: dict) -> bool:
     return msg.get("agent") == "knowledge" and not msg.get("citations") and not msg.get("cached")
 
 
+def _sse_events(response):
+    """Frames from an httpx streaming response: yields (event, payload). Minimal SSE parse —
+    the backend emits exactly `event:` + one-line `data:` + blank (see routes_chat._sse)."""
+    event, data = None, None
+    for line in response.iter_lines():
+        if line.startswith("event: "):
+            event = line.removeprefix("event: ")
+        elif line.startswith("data: "):
+            data = line.removeprefix("data: ")
+        elif line == "" and event is not None:
+            yield event, json.loads(data)
+            event, data = None, None
+
+
+# The status frames' demo value: what the pipeline is doing during the pre-text seconds.
+_STATUS_LABELS = {"handoff": "🤝 {} agent is on it…", "tool": "⚙️ running {}…"}
+
+
 def render_assistant(msg: dict, *, key: int | None = None) -> None:
     st.markdown(display_answer(msg["answer"]))
     badges = []
@@ -247,33 +269,80 @@ if prompt:
     with st.chat_message("user", avatar="🧑‍💻"):
         st.markdown(prompt)
 
-    with st.spinner("Routing to a specialist…"):
+    payload = {
+        "message": prompt,
+        "user_id": user_id or None,
+        "session_id": st.session_state.session_id,
+    }
+
+    def _as_msg(data: dict) -> dict:
+        return {
+            "role": "assistant",
+            "answer": data["answer"],
+            "agent": data.get("agent"),
+            "citations": data.get("citations", []),
+            "cached": data.get("cached", False),
+        }
+
+    def _error_msg(detail) -> dict:
+        return {
+            "role": "assistant",
+            "answer": f"⚠️ Backend error: `{detail}` — is the API up at {API_URL}?",
+            "agent": None,
+            "citations": [],
+        }
+
+    # Stream the answer as it generates (M11, ADR-048). The tokens render live via
+    # st.write_stream; the transcript entry is built from the `final` event (the full
+    # ChatResponse equivalent), and the append + st.rerun() below redraws it through the
+    # history loop with the right avatar/citations/badges — same architecture as before,
+    # the streamed text is just the live preview of it.
+    with st.chat_message("assistant", avatar="🤖"):
+        status_box = st.empty()
+        status_box.caption("Routing to a specialist…")
+        outcome: dict = {}
+
         try:
-            response = httpx.post(
-                f"{API_URL}/chat",
-                json={
-                    "message": prompt,
-                    "user_id": user_id or None,
-                    "session_id": st.session_state.session_id,
-                },
-                timeout=120.0,
-            )
-            response.raise_for_status()
-            data = response.json()
-            msg = {
-                "role": "assistant",
-                "answer": data["answer"],
-                "agent": data.get("agent"),
-                "citations": data.get("citations", []),
-                "cached": data.get("cached", False),
-            }
+            with httpx.stream(
+                "POST", f"{API_URL}/chat/stream", json=payload, timeout=120.0
+            ) as response:
+                response.raise_for_status()
+
+                def _deltas():
+                    for event, data in _sse_events(response):
+                        outcome["started"] = True
+                        if event == "delta":
+                            yield data["text"]
+                        elif event == "status":
+                            label = _STATUS_LABELS.get(data.get("stage"))
+                            if label:
+                                status_box.caption(label.format(data.get("detail", "")))
+                        elif event == "final":
+                            outcome["final"] = data
+                        elif event == "error":
+                            outcome["error"] = data.get("detail", "stream error")
+
+                st.write_stream(_deltas())
+            status_box.empty()
+            if "final" in outcome:
+                msg = _as_msg(outcome["final"])
+            else:  # in-band `error` frame (or a stream cut short) — same copy as ever
+                msg = _error_msg(outcome.get("error", "stream ended without a final event"))
         except httpx.HTTPError as exc:
-            msg = {
-                "role": "assistant",
-                "answer": f"⚠️ Backend error: `{exc}` — is the API up at {API_URL}?",
-                "agent": None,
-                "citations": [],
-            }
+            status_box.empty()
+            if outcome.get("started"):
+                # The run already started server-side — re-POSTing could replay an action.
+                msg = _error_msg(exc)
+            else:
+                # Stream endpoint unreachable (older API, SSE-hostile proxy): the frozen
+                # /chat JSON contract is the fallback — one try/except, same pipeline.
+                with st.spinner("Routing to a specialist…"):
+                    try:
+                        response = httpx.post(f"{API_URL}/chat", json=payload, timeout=120.0)
+                        response.raise_for_status()
+                        msg = _as_msg(response.json())
+                    except httpx.HTTPError as exc2:
+                        msg = _error_msg(exc2)
     # Append + rerun (rather than rendering in place): the transcript always draws through the
     # history loop, so the newest refusal's escalation button exists the moment it's answered.
     st.session_state.messages.append(msg)

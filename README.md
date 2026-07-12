@@ -48,7 +48,7 @@ agentdesk/
 │   ├── main.py                       # FastAPI entrypoint
 │   ├── config.py                     # settings via pydantic-settings
 │   ├── api/
-│   │   ├── routes_chat.py            # POST /chat — session load, cache check, run router; /identity/resolve (M8)
+│   │   ├── routes_chat.py            # POST /chat + /chat/stream (SSE, M11) — one shared pipeline; /identity/resolve (M8)
 │   │   ├── routes_approvals.py       # list/approve/reject pending orders (HITL)
 │   │   └── routes_health.py
 │   ├── agents/
@@ -90,7 +90,7 @@ agentdesk/
 │       ├── tracing.py                # M6: Langfuse bridge — SDK trace processor, tags, cost budget (ADR-042/043/045)
 │       └── costs.py                  # M6: THE price table (evals + tracing import the same dict)
 ├── ui/
-│   ├── streamlit_app.py              # chat UI
+│   ├── streamlit_app.py              # chat UI — streams answers over SSE, plain-POST fallback (M11)
 │   └── approval_view.py              # manager approval card for HITL
 ├── scripts/
 │   ├── generate_data.py              # M0: two-stage LLM dataset generator (cached to data/)
@@ -101,7 +101,7 @@ agentdesk/
 │   ├── datasets/
 │   │   ├── retrieval.jsonl           # 40 cases: query -> expected article ids (+ refusal probes)
 │   │   ├── routing.jsonl             # 30 cases: query -> expected specialist
-│   │   ├── e2e.jsonl                 # 18 flows: conversation -> expected DB side effects
+│   │   ├── e2e.jsonl                 # 19 flows: conversation -> expected DB side effects (+ stream parity, M11)
 │   │   ├── dedup.jsonl               # 12 gray-band link/trap probes (ADR-028)
 │   │   ├── quality.jsonl             # 10 LLM-as-judge cases (ADR-033)
 │   │   ├── graph.jsonl               # 15 multi-hop impact/root-cause cases + ground truth (ADR-036)
@@ -129,7 +129,8 @@ agentdesk/
 │   ├── test_slack.py                 # M8: runner — triggers, envelope, fail-closed identity, re-submit
 │   ├── test_guardrails.py            # M8: injection-screen gating + tripwire plumbing (LLM-free)
 │   ├── test_mcp.py                   # M8: MCP tool surface, token map, identity threading
-│   └── test_observability.py         # M6: no-op contract, tag/cost aggregation, cost budget, A/B seam
+│   ├── test_observability.py         # M6: no-op contract, tag/cost aggregation, cost budget, A/B seam
+│   └── test_streaming.py             # M11: SSE endpoint — event schema parity, cache fast path, extraction ordering
 ├── data/                             # M0: generated dataset (cached JSON) + taxonomy — rebuild via `make seed`
 ├── design/                           # DATA_DICTIONARY.md · database_erd.png · architecture diagrams
 ├── ignore/                           # git-ignored local scratch / notes
@@ -273,7 +274,46 @@ mini router at `minimal` effort is already 1–1.4 s.
 serial generation remains at any effort — that floor is why perceived latency is M11's
 (streaming) job, not another knob here.
 
-### Caching A/B (ADR-044)
+### Streaming: perceived latency (M11, ADR-048)
+
+`POST /chat/stream` streams the answer as it generates — same `ChatRequest` in,
+`text/event-stream` out: `delta` (text tokens), `status` (handoff/tool progress), `final`
+(the full ChatResponse-equivalent JSON, built from the same model so the two contracts can't
+drift), `error` (in-band — the HTTP 200 is already committed once a stream opens). The
+existing **`POST /chat` JSON contract is frozen**: the e2e suite, Slack runner, eval harness
+and MCP surfaces all stay on it, and the Streamlit chat UI is simply a pure client of the new
+endpoint (the ADR-038 pattern extended to the browser). Both endpoints share one extracted
+pipeline — semantic cache, memory hooks, guardrail contract, citation collection are the same
+helpers, and the parity e2e flow proves it end-to-end: a query streamed over SSE is stored by
+the same write-time cache gate and then served `cached=true` by plain `/chat` with the
+identical answer and citations. SSE over WebSockets in one line: chat streaming is
+one-directional (one request, many events), so SSE rides the existing HTTP stack and its
+failure mode is just a dead response — which is what makes the UI's plain-POST fallback a
+one-liner instead of a reconnect protocol.
+
+Same 6 probes as the M10 table (verbatim), 3× each, p50 of turn 1:
+
+| probe | first `status` frame | first token | stream wall | M10 /chat wall |
+|---|---|---|---|---|
+| knowledge refusal | 1.2 s | 8.8 s | 10.5 s | 12.3 s |
+| knowledge answerable | 1.1 s | 9.2 s | 13.8 s | 15.0 s |
+| semantic-cache hit | — | **0.19 s** (whole answer, one delta) | 0.19 s | 0.09 s |
+| order auto-place | 1.1 s | **5.3 s** | 10.1 s | 11.0 s |
+| incident dedup-link | 1.2 s | 9.3 s | 10.4 s | 13.0 s |
+| multi-intent (turn 1) | 1.0 s | 22.3 s | 34.5 s | 42.5 s |
+
+**What streaming does NOT fix — read the last two columns:** stream wall ≈ /chat wall on
+every probe (the deltas are noise, not speedup). Streaming moves no work; it only reveals
+progress. And the first *token* is seconds, not the ~1 s a demo might hope for, by anatomy:
+tokens only exist once the final composition call starts emitting visible text — the router's
+forced handoff, the specialist's tool round-trip and the final call's own reasoning prefix
+(knowledge runs at `medium` effort per the ADR-047 carve-out) are all structurally
+token-free. The ~1 s number that IS real is the first `status` frame (which agent took over,
+which tool is running) — the UI shows it during the pre-text seconds precisely because it's
+the only honest signal available that early. Cache hits skip all of it and render the stored
+answer instantly with the cache caption.
+
+
 
 Same command, two arms: caches on vs `CACHES_DISABLED=1` (a deliberate flag in all three
 caches — not a simulated Redis outage). Slice: retrieval + e2e, the only suites that can hit
