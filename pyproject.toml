@@ -4,7 +4,14 @@ version = "0.1.0"
 description = "AI-powered ITSM service desk: router + specialist agents with hybrid RAG, semantic caching, and HITL approvals"
 requires-python = ">=3.12"
 dependencies = [
-    "openai-agents[litellm]",
+    # Bounded after the 2026-07-09 nightly crash: unpinned resolution installed
+    # openai-agents 0.18.0 alongside openai 2.45.0, whose InputTokensDetails grew a required
+    # cache_write_tokens field the SDK didn't set — every eval run died at import time.
+    # 0.18.2 fixed it (proven green in the 2026-07-10/11 nightlies). Floors admit only
+    # combinations a nightly has actually passed; caps stop surprise majors/minors from
+    # landing in CI before they're deliberately adopted here.
+    "openai-agents[litellm]>=0.18.2,<0.19",
+    "openai>=2.45,<3",
     "fastapi",
     "uvicorn[standard]",
     "streamlit",
