@@ -25,6 +25,7 @@ from app.agents.fulfillment import fulfillment_agent
 from app.agents.incident import incident_agent
 from app.agents.knowledge import knowledge_agent
 from app.agents.router import router_agent
+from app.config import Settings, get_settings
 
 ALL_AGENTS = [router_agent, knowledge_agent, fulfillment_agent, incident_agent]
 
@@ -54,6 +55,31 @@ def test_adr018_guards_on_every_agent(agent: Agent):
     # narrating transfers.
     assert agent.model_settings.tool_choice == "required"
     assert agent.instructions.startswith(RECOMMENDED_PROMPT_PREFIX)
+
+
+def test_m10_reasoning_effort_wired_from_config():
+    # M10 (ADR-047): reasoning effort is config-driven — the router classifies at
+    # router_reasoning_effort, fulfillment/incident act at specialist_reasoning_effort, and
+    # knowledge carries its OWN setting (its ADR-017 stage-2 judgment is effort-sensitive).
+    # The agents must reflect whatever config resolved to (env-overridable like every other
+    # setting); the DEFAULTS are pinned separately below because the eval floors were
+    # measured against them.
+    settings = get_settings()
+    assert router_agent.model_settings.reasoning.effort == settings.router_reasoning_effort
+    assert knowledge_agent.model_settings.reasoning.effort == settings.knowledge_reasoning_effort
+    for agent in (fulfillment_agent, incident_agent):
+        assert agent.model_settings.reasoning.effort == settings.specialist_reasoning_effort
+
+
+def test_m10_reasoning_effort_defaults_pinned():
+    # The measured defaults (ADR-047): router "minimal" (pure classification, 0 reasoning
+    # tokens, routing 30/30); fulfillment/incident "low" (all gates green); knowledge
+    # "medium" — "low" measurably produced Sources-decorated refusals on the chat path,
+    # violating the ADR-017 contract and leaking refusals into the semantic cache. Read off
+    # the FIELD defaults, not get_settings(), so a local env override can't hide a drift.
+    assert Settings.model_fields["router_reasoning_effort"].default == "minimal"
+    assert Settings.model_fields["specialist_reasoning_effort"].default == "low"
+    assert Settings.model_fields["knowledge_reasoning_effort"].default == "medium"
 
 
 def test_reset_tool_choice_split():

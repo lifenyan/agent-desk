@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from agents import Agent, ModelSettings
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
+from openai.types.shared import Reasoning
 
 from app.agents.context import ChatContext
 from app.agents.knowledge import resolve_model
@@ -153,5 +154,9 @@ incident_agent = Agent[ChatContext](
     model=resolve_model(get_settings().specialist_model),
     # ADR-018 guards: forced first tool call; reset_tool_choice (default True) frees the
     # final answer afterwards.
-    model_settings=ModelSettings(tool_choice="required"),
+    # Reasoning effort (M10, ADR-047): config-driven, measured — see config.py.
+    model_settings=ModelSettings(
+        tool_choice="required",
+        reasoning=Reasoning(effort=get_settings().specialist_reasoning_effort),
+    ),
 )

@@ -33,6 +33,33 @@ class Settings(BaseSettings):
     # 2026-07-07); same OPENAI_API_KEY, no new credentials.
     judge_model: str = "gpt-5"
 
+    # --- reasoning effort (M10, ADR-047): where the latency actually lives -----------------
+    # gpt-5-family models spend "reasoning tokens" before every visible output, at the API's
+    # default effort ("medium") when the request doesn't say otherwise — which this app never
+    # did before M10. Span-attributed measurement (ignore/tem/m10_latency_baseline.json)
+    # showed 97-99% of chat wall time is LLM generations, dominated by those hidden tokens
+    # (tools/handoffs/app overhead are all sub-second), so effort is THE latency knob this
+    # architecture leaves free (hop count and instructions are pinned by ADR-003/018/022).
+    # Defaults below are measured, not guessed; both are BEHAVIOR changes gated by the eval
+    # floors (subset + full routing green at these values — the runs are in ADR-047).
+    # The router is pure single-label classification with forced tool choice — "minimal"
+    # measured 0 reasoning tokens, and its 6-18s of generation time per conversation fell
+    # to 1-3s with routing accuracy unchanged.
+    router_reasoning_effort: str = "minimal"
+    # Fulfillment + incident: "low" keeps a thinking budget for order forms and the ADR-021
+    # dedup gray band while cutting most of the default's reasoning tokens — every gate green
+    # at "low" (routing 30/30 x3, dedup 11/12 in historical range, slack 5/5, all e2e
+    # order/incident flows). "minimal" was NOT adopted (untested against the gray bands,
+    # savings over "low" marginal). Set to "medium" to restore the exact pre-M10 default.
+    specialist_reasoning_effort: str = "low"
+    # Knowledge is deliberately SEPARATE and stays at the API default: its ADR-017 stage-2
+    # coverage judgment measurably DEGRADES at "low" on the facts-injected chat path — the
+    # model keeps refusing but decorates the refusal with the forbidden "Sources:" list
+    # (5/13 runs at low vs 0 ever observed at medium), which violates the output contract
+    # AND leaks the refusal into the semantic cache via the write-time gate. Measured in
+    # ignore/tem/m10_smartwatch_http_probe.py; the e2e refusal flow (floor 1.0) is the gate.
+    knowledge_reasoning_effort: str = "medium"
+
     # --- retrieval knobs (ADR-011 / ADR-016; tuned against `make eval`, not vibes) ---
     retrieval_top_k: int = 5
     rrf_k: int = 60
@@ -107,6 +134,9 @@ class Settings(BaseSettings):
         "specialist_model",
         "embedding_model",
         "judge_model",
+        "router_reasoning_effort",
+        "specialist_reasoning_effort",
+        "knowledge_reasoning_effort",
         "hitl_approval_threshold_usd",
         "retrieval_refusal_threshold",
         "graph_backend",

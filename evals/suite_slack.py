@@ -123,8 +123,13 @@ def _run_case(case: dict, base: str, sink_path: str) -> dict:
             t.user_id == acting_id and t.embedding is not None for t in new_tickets
         )
         checks["reply posted in thread"] = bool(replies)
-        checks["reply carries the ticket id"] = bool(new_tickets) and any(
-            str(new_tickets[0].id) in r["text"] for r in replies
+        # ADR-046 made TKTnnn numbers the user-facing handle (instructions: confirm by
+        # number, NEVER by uuid) — this check originally asserted the uuid and silently
+        # broke the day that merged; first surfaced by the M10 merge-gate run. Accept
+        # either form: the number is the contract, the uuid a legacy pass.
+        checks["reply carries the ticket number"] = bool(new_tickets) and any(
+            new_tickets[0].number in r["text"] or str(new_tickets[0].id) in r["text"]
+            for r in replies
         )
         # KB-article half: reported, not gated (see module docstring). citations = the agent
         # ran its search_knowledge_articles step with evidence (routes_chat._collect_citations).
