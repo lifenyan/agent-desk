@@ -32,13 +32,25 @@ is the deployment story.)
 2. **Postgres with pgvector**: add a database → PostgreSQL, then in the service settings set
    the image to `pgvector/pgvector:pg16` and redeploy (Railway's stock postgres image lacks
    the extension; migration 0001 runs `CREATE EXTENSION vector` and will fail without it).
+   pg16 keeps prod on the same major as local compose and the CI service containers —
+   dev/CI/prod parity is the point. **The volume wipe is mandatory**: Railway's stock
+   Postgres (pg18 as of 2026-07) initializes the volume on the service's FIRST boot, and
+   pg16 then crash-loops on the newer data dir/config (observed live: `unrecognized
+   configuration parameter "autovacuum_worker_slots"`, FATAL on every start — while the
+   service badge stays green). After the image swap, wipe the service's volume and
+   redeploy so pg16 re-initializes it; harmless before seed/ingest have run. Always check
+   the Postgres deploy logs for `database system is ready to accept connections` before
+   moving on.
 3. **Redis**: add a database → Redis. No config needed (the embedding cache has no TTL and
    tolerates eviction — it just re-embeds).
 4. **API service**: New → GitHub Repo → this repo. Railway auto-detects the Dockerfile.
    - Variables:
      - `DATABASE_URL` = `postgresql+psycopg://` + Railway's Postgres connection string with
        the scheme stripped (Railway gives `postgresql://user:pass@host:port/db`; SQLAlchemy
-       needs the `+psycopg` driver marker).
+       needs the `+psycopg` driver marker). Build it from service REFERENCES (type `${{` and
+       use the autocomplete) — never paste `.env.example`'s localhost value (observed live:
+       alembic then dials 127.0.0.1 inside the container and the boot crash-loops). Verify
+       the RESOLVED value (eye icon) shows `<service>.railway.internal`, not localhost.
      - `REDIS_URL` = reference the Redis service's `REDIS_URL`.
      - `OPENAI_API_KEY` = your key.
      - Optional (M6 tracing): `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` (+ `LANGFUSE_HOST`
@@ -52,17 +64,19 @@ is the deployment story.)
    python -m app.rag.ingest       # chunk + embed articles/tickets (~$0.01, one-time)
    ```
 6. **Chat UI service**: New → GitHub Repo → same repo, second service.
-   - Settings → Deploy → Custom Start Command:
+   - Settings → Deploy → Custom Start Command — **the `sh -c` wrapper is load-bearing**:
+     Railway execs custom start commands without a shell, so a bare `$PORT` reaches
+     Streamlit unexpanded (observed live: `'$PORT' is not a valid integer`, crash-loop):
      ```
-     streamlit run ui/streamlit_app.py --server.port $PORT --server.address 0.0.0.0
+     sh -c "streamlit run ui/streamlit_app.py --server.port $PORT --server.address 0.0.0.0"
      ```
    - Variables: `API_URL` = `http://<api-service-name>.railway.internal:8000` (private
      networking; the UI talks to the API server-side, so no public URL is needed).
    - Expose the service (Railway sets `$PORT` itself).
 7. **Approvals UI service (M2, optional)**: New → GitHub Repo → same repo, third service.
-   - Same as the chat UI, but the start command runs `approval_view.py`:
+   - Same as the chat UI (including the `sh -c` wrapper), but running `approval_view.py`:
      ```
-     streamlit run ui/approval_view.py --server.port $PORT --server.address 0.0.0.0
+     sh -c "streamlit run ui/approval_view.py --server.port $PORT --server.address 0.0.0.0"
      ```
    - Same `API_URL` variable; expose the service. This is the manager's approve/reject surface
      — deliberately separate from the chat UI (the approver is not the requester, ADR-005).
