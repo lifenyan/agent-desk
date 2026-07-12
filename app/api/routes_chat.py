@@ -106,6 +106,39 @@ def _collect_citations(items: list[Any]) -> list[Citation]:
     return sorted(by_article.values(), key=lambda c: c.rrf_score, reverse=True)
 
 
+def _confirm_ticket_actions(answer: str, items: list[Any]) -> str:
+    """Deterministic backstop for the model narrating instead of confirming (observed live:
+    "I'll open a ticket now…" as the final text while create_ticket had ALREADY succeeded).
+    Every ticket number a write tool returned this run must appear in the final answer —
+    append the ones the model dropped. Numbers come from tool payloads, never model prose,
+    so this can never confirm an action that didn't happen (the ADR-041 honesty rule's
+    deterministic other half)."""
+    numbers: list[str] = []
+    for item in items:
+        if getattr(item, "type", None) != "tool_call_output_item":
+            continue
+        output = item.output
+        if isinstance(output, str):
+            try:
+                output = json.loads(output)
+            except ValueError:
+                continue
+        if not isinstance(output, dict):
+            continue
+        ticket = output.get("ticket")
+        # create_ticket/update_ticket payloads carry "number"; get_ticket_status (a READ —
+        # nothing to confirm) is excluded by its comment fields.
+        if isinstance(ticket, dict) and ticket.get("number") and "latest_comment" not in ticket:
+            numbers.append(ticket["number"])
+        comment = output.get("comment")
+        if isinstance(comment, dict) and comment.get("ticket_number"):
+            numbers.append(comment["ticket_number"])
+    missing = [n for n in dict.fromkeys(numbers) if n not in answer]
+    if missing:
+        answer = answer.rstrip() + "\n\n🎫 " + " · ".join(f"Ticket {n}" for n in missing)
+    return answer
+
+
 async def _is_first_turn(session: SQLAlchemySession | None) -> bool:
     """Semantic-cache session policy (ADR-023): only a conversation's FIRST message may be
     cache-served or cache-stored. A mid-conversation message ("yes, go ahead", "what about
@@ -212,7 +245,7 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatR
                 citations=[],
                 flagged=True,
             )
-        answer = str(result.final_output)
+        answer = _confirm_ticket_actions(str(result.final_output), result.new_items)
         citations = _collect_citations(result.new_items)
 
         # Write side of the read-only guarantee: knowledge answers with evidence only (never

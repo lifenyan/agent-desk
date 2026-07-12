@@ -179,6 +179,15 @@ HUMAN_HANDOFF_MESSAGE = (
     "have — don't wait for more details from me — and have someone from IT follow up."
 )
 
+# Bounded auto-retry (the Slack runner's re-submit-once pattern): the backend appends the
+# TKTnnn of any real write to the answer, so a reply WITHOUT a number provably means no
+# ticket exists — observed live as "Request submitted…" with zero tool writes. One nudge.
+TICKET_NUDGE_MESSAGE = (
+    "No ticket number came back, which means the ticket was NOT actually created. Call "
+    "create_ticket right now with the information you already have and give me its TKT number."
+)
+_TKT_IN_ANSWER = re.compile(r"\bTKT\d{3,}\b")
+
 
 def _is_refusal(msg: dict) -> bool:
     """ADR-017 contract: knowledge answers always carry citations; refusals never do."""
@@ -207,6 +216,8 @@ def render_assistant(msg: dict, *, key: int | None = None) -> None:
         with left:
             if st.button("🎫 Create a ticket", key=f"ticket-{key}", use_container_width=True):
                 st.session_state.pending_prompt = HUMAN_HANDOFF_MESSAGE
+                st.session_state.expect_ticket = True
+                st.session_state.ticket_nudged = False
         with right:
             # Deliberately inert (product mock — no live-agent backend exists). The click
             # still reruns the script, which redraws the same transcript: a visible no-op.
@@ -266,4 +277,14 @@ if prompt:
     # Append + rerun (rather than rendering in place): the transcript always draws through the
     # history loop, so the newest refusal's escalation button exists the moment it's answered.
     st.session_state.messages.append(msg)
+    if (
+        st.session_state.pop("expect_ticket", False)
+        and msg.get("agent")  # a backend error is not the model failing to file
+        and not _TKT_IN_ANSWER.search(msg["answer"])
+        and not st.session_state.get("ticket_nudged")
+    ):
+        # Escalation turn came back with no ticket number => provably no ticket. Retry once.
+        st.session_state.ticket_nudged = True
+        st.session_state.expect_ticket = True
+        st.session_state.pending_prompt = TICKET_NUDGE_MESSAGE
     st.rerun()
