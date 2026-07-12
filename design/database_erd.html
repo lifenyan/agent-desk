@@ -81,6 +81,7 @@ const { svg } = await mermaid.render('erd-svg', `erDiagram
   }
   ORDERS {
     uuid id PK
+    string number UK "ORDnnn, user-facing"
     uuid user_id FK
     uuid item_id FK
     string status
@@ -89,6 +90,7 @@ const { svg } = await mermaid.render('erd-svg', `erDiagram
   }
   TICKETS {
     uuid id PK
+    string number UK "TKTnnn, user-facing"
     uuid user_id FK
     uuid asset_id FK "composite FK w/ user_id"
     string type

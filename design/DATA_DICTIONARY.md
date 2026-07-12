@@ -78,6 +78,7 @@ A user's request for a catalog item — the "service request" side of ITSM (kept
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
+| number | string, unique | user-facing order number (`ORD001`, `ORD002`, …) assigned by a DB sequence at insert (migration 0004, ADR-046) — what agents quote to users and what users quote back; the UUID stays internal. Zero-padded to 3 digits, grows naturally past `ORD999`; sequence gaps (rolled-back inserts) are normal |
 | user_id | uuid FK → users | requester |
 | item_id | uuid FK → catalog_items | |
 | status | string | `draft / submitted / fulfilled / cancelled` — the order's lifecycle |
@@ -91,6 +92,7 @@ Unified ticket table. Real ITSM (ITIL) splits incidents, requests, changes, and 
 | Column | Type | Notes |
 |---|---|---|
 | id | uuid PK | |
+| number | string, unique | user-facing ticket number (`TKT001`, …) — same mechanism and rules as `orders.number` (migration 0004, ADR-046). Ticket tools accept it anywhere a `ticket_id` argument is expected |
 | user_id | uuid FK → users | reporter |
 | asset_id | uuid FK → assets, nullable | the affected device, when the issue is about a specific asset ("my laptop is slow"); null for account/service issues |
 | type | string | `incident` (something is broken) / `request` (small non-catalog asks). Gives the router agent a cleaner classification target |

@@ -27,6 +27,7 @@ router = APIRouter(prefix="/approvals", tags=["approvals"])
 
 class PendingOrder(BaseModel):
     order_id: str
+    number: str  # user-facing ORDnnn (ADR-046) — what the approvals UI displays
     item: str
     price_usd: float
     requester: str

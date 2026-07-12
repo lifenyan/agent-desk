@@ -28,6 +28,7 @@ from sqlalchemy import (
     CheckConstraint,
     Computed,
     DateTime,
+    FetchedValue,
     Float,
     ForeignKey,
     ForeignKeyConstraint,
@@ -300,6 +301,11 @@ class Order(Base):
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
+    # User-facing handle (ORDnnn) assigned by the DB at insert (migration 0004, ADR-046);
+    # the id UUID stays the internal identity. FetchedValue = the ORM never sends it.
+    number: Mapped[str] = mapped_column(
+        String, unique=True, nullable=False, server_default=FetchedValue()
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("catalog_items.id"), nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default=OrderStatus.draft)
@@ -334,6 +340,10 @@ class Ticket(Base):
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
+    # User-facing handle (TKTnnn) assigned by the DB at insert (migration 0004, ADR-046).
+    number: Mapped[str] = mapped_column(
+        String, unique=True, nullable=False, server_default=FetchedValue()
+    )
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     type: Mapped[str] = mapped_column(String, nullable=False)

@@ -651,3 +651,15 @@ Date: 2026-07-08 · Status: accepted
 **Alternatives:** Per-trace threshold only (misses the actual failure mode — death by a thousand cheap turns); accumulating in the sessions table (a durable business-data write per request for an alert; Redis TTL is the right retention for spend telemetry); Langfuse-side alerting (Cloud feature-gated and unavailable against the local compose stack; the log line works everywhere the app does); hard-stopping the conversation at the limit (turns a telemetry threshold into a product behavior — wrong layer, and hostile at a $0.10 default).
 
 **Tradeoffs:** The accumulator counts only traced spend in THIS process tree (untraced embedding calls are ~rounding; a no-keys deployment accumulates nothing — the alert rides on tracing being on, stated here). INCRBYFLOAT drift is irrelevant at alert granularity. The event fires on every trace after the crossing (cumulative stays above threshold) — deliberate: repetition is loudness, and the TTL ends it.
+
+## ADR-046: User-facing record numbers (ORDnnn / TKTnnn) — DB-sequence-assigned, accepted anywhere an id argument is
+
+Date: 2026-07-12 · Status: accepted
+
+**Context:** Users track work by quoting a short handle ("what's the status of TKT042?"), and the UIs deliberately stopped displaying UUIDs — leaving orders and tickets with NO user-visible identity at all. Real ITSM systems (ServiceNow INC/REQ numbers) solved this decades ago.
+
+**Decision:** `orders.number` (ORDnnn) and `tickets.number` (TKTnnn): unique, NOT NULL, assigned at insert by a per-table Postgres sequence through a formatter function (migration 0004) — DB-side so uniqueness holds under concurrent inserts with zero app coordination. Zero-padded to at least three digits and growing naturally past 999 (a bare `lpad(n, 3)` TRUNCATES '1000' to '100' — the formatter pads to `greatest(3, length(n))`). Existing rows backfilled in id order; sequences start past the backfill. UUIDs remain the internal identity (FKs, payload plumbing); numbers are what agents quote (instructions updated: confirm orders/tickets by number, never by id) and what users quote back — every tool taking a `ticket_id`/`order_id` argument now resolves BOTH forms (`_resolve_ticket_ref`/`_resolve_order_ref`). get_ticket_status, MCP-only since ADR-040, is promoted onto the incident agent: "status of TKT042" needs a direct ownership-gated read, and no richer tool provided one (observed live: without it the agent asked how to deliver the status instead of answering).
+
+**Alternatives:** App-side max()+1 (races under concurrency); uuid prefixes as display handles (not memorable, not orderable, still look like ids); numbers as the primary key (churns every FK and the uuid5 deterministic-seed scheme for zero user-facing gain).
+
+**Tradeoffs:** Sequence gaps appear whenever an insert rolls back (normal Postgres behavior, stated in the DATA_DICTIONARY); numbers leak creation order (fine here — it's demo data, and ITSM numbers do this by convention). The backfill's id-order numbering is arbitrary for seeded rows — nothing depends on which seeded ticket got TKT001.

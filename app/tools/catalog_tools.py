@@ -21,6 +21,7 @@ talk an order under the approval threshold (DESIGN NOTE in user_tools.py).
 
 from __future__ import annotations
 
+import re
 import uuid
 
 from agents import RunContextWrapper, function_tool
@@ -83,10 +84,30 @@ def _order_summary(order: Order) -> str:
     return "placed (no approval needed)"
 
 
+_ORDER_NUMBER_RE = re.compile(r"^ORD\d{3,}$")
+
+
+def _resolve_order_ref(session: Session, order_ref: str) -> Order | dict:
+    """Fetch an order by UUID or by user-facing number (ORDnnn, ADR-046) — mirrors
+    ticket_tools._resolve_ticket_ref."""
+    ref = (order_ref or "").strip().upper()
+    if _ORDER_NUMBER_RE.match(ref):
+        order = session.scalar(select(Order).where(Order.number == ref))
+    else:
+        order_uuid = parse_uuid_arg(order_ref, "order_id")
+        if isinstance(order_uuid, dict):
+            return order_uuid
+        order = session.get(Order, order_uuid)
+    if order is None:
+        return {"error": f"order {order_ref} not found"}
+    return order
+
+
 def _order_payload(order: Order, item: CatalogItem) -> dict:
     return {
         "order": {
             "order_id": str(order.id),
+            "number": order.number,  # the user-facing handle — quote THIS, never the id
             "item": item.name,
             "price_usd": float(item.price),  # from the catalog row, never the model
             "status": order.status,
@@ -153,6 +174,7 @@ def get_my_orders(ctx: RunContextWrapper[ChatContext]) -> dict:
             entries.append(
                 {
                     "order_id": str(order.id),
+                    "number": order.number,
                     "item": item.name,
                     "price_usd": float(item.price),
                     "status": order.status,
@@ -164,7 +186,8 @@ def get_my_orders(ctx: RunContextWrapper[ChatContext]) -> dict:
             "orders": entries,
             "guidance": (
                 "Report from `summary` — it already encodes the status/approval_state "
-                "combination. Identify orders to the user by item and price, never by id."
+                "combination. Identify orders to the user by their number (ORDnnn) plus item "
+                "and price; the id UUID is internal, never show it."
             ),
         }
 
@@ -227,18 +250,16 @@ def request_approval(ctx: RunContextWrapper[ChatContext], order_id: str) -> dict
     was placed, and never try to approve it yourself.
 
     Args:
-        order_id: UUID of the draft order returned by place_catalog_order.
+        order_id: UUID or order number (e.g. "ORD019") of the draft order returned by
+            place_catalog_order.
     """
     with SessionLocal() as session:
         user = resolve_acting_user(session, ctx)
         if isinstance(user, dict):
             return user
-        order_uuid = parse_uuid_arg(order_id, "order_id")
-        if isinstance(order_uuid, dict):
-            return order_uuid
-        order = session.get(Order, order_uuid)
-        if order is None:
-            return {"error": f"order {order_id} not found"}
+        order = _resolve_order_ref(session, order_id)
+        if isinstance(order, dict):
+            return order
         if order.user_id != user.id:
             return {"error": f"order {order_id} does not belong to the current user"}
         if order.approval_state == ApprovalState.pending:
@@ -275,6 +296,7 @@ def _serialize_pending(session: Session, order: Order) -> dict:
     requester = session.get(User, order.user_id)
     return {
         "order_id": str(order.id),
+        "number": order.number,
         "item": item.name,
         "price_usd": float(item.price),
         "requester": requester.email,

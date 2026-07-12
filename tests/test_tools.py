@@ -18,6 +18,7 @@ two demo pending orders the Streamlit walkthrough relies on) stays pristine.
 
 from __future__ import annotations
 
+import re
 import uuid
 
 import pytest
@@ -444,6 +445,47 @@ def test_get_my_orders_scoped_to_acting_user_with_current_state(
 
 def test_get_my_orders_requires_identity():
     assert "no acting user" in get_my_orders(ctx_for(None))["error"]
+
+
+# ---------------------------------------------------------------------------------------------
+# Record numbers (ADR-046): DB-assigned, ascending, and accepted as tool arguments
+# ---------------------------------------------------------------------------------------------
+
+
+def test_record_numbers_assigned_ascending_and_returned(demo_ctx, clean_writes):
+    first = create_ticket(demo_ctx, "Test number seq A", "x", "other")["ticket"]
+    second = create_ticket(demo_ctx, "Test number seq B", "x", "other")["ticket"]
+    assert re.fullmatch(r"TKT\d{3,}", first["number"])
+    assert re.fullmatch(r"TKT\d{3,}", second["number"])
+    assert int(second["number"][3:]) == int(first["number"][3:]) + 1
+
+    cheap, _ = _cheap_and_pricey()
+    order = place_catalog_order(demo_ctx, cheap["item_id"], _form_values_for(cheap))["order"]
+    assert re.fullmatch(r"ORD\d{3,}", order["number"])
+
+
+def test_ticket_tools_accept_the_user_facing_number(demo_ctx, clean_writes):
+    created = create_ticket(demo_ctx, "Test number lookup", "x", "other")["ticket"]
+    number = created["number"]
+    assert get_ticket_status(demo_ctx, number)["ticket"]["ticket_id"] == created["ticket_id"]
+    assert get_ticket_status(demo_ctx, number.lower())["ticket"]["number"] == number
+    updated = update_ticket(demo_ctx, number, status="resolved")
+    assert updated["ticket"]["status"] == TicketStatus.resolved
+    assert "not found" in get_ticket_status(demo_ctx, "TKT999999")["error"]
+
+
+def test_ticket_number_lookup_still_enforces_ownership(demo_ctx, demo_user_id):
+    with SessionLocal() as s:
+        foreign = s.scalar(select(Ticket.number).where(Ticket.user_id != demo_user_id).limit(1))
+    assert "does not belong" in get_ticket_status(demo_ctx, foreign)["error"]
+
+
+def test_request_approval_accepts_the_order_number(demo_ctx, clean_writes):
+    _, pricey = _cheap_and_pricey()
+    draft = place_catalog_order(demo_ctx, pricey["item_id"], _form_values_for(pricey))["order"]
+    pending = request_approval(demo_ctx, draft["number"])
+    assert pending["order"]["approval_state"] == ApprovalState.pending
+    assert pending["order"]["number"] == draft["number"]
 
 
 def test_order_summary_covers_the_state_machine():

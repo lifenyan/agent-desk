@@ -92,11 +92,14 @@ def test_incident_has_only_ticket_and_graph_tools():
     # M8 deliberately added the Slack reply pair (ADR-039): post_slack_message (destination
     # locked to the run context's thread) + search_knowledge_articles (the ONE suggested
     # article in the thread reply — instructions scope it to that step).
+    # ADR-046 promoted get_ticket_status from MCP-only: users quote TKTnnn numbers and a
+    # status question needs a direct ownership-gated read.
     assert {t.name for t in incident_agent.tools} == {
         "get_user_profile",
         "get_user_assets",
         "search_similar_tickets",
         "create_ticket",
+        "get_ticket_status",
         "add_ticket_comment",
         "update_ticket",
         "query_dependency_graph",
