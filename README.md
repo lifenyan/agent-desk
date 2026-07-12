@@ -207,6 +207,71 @@ joined by trace id — harness **$0.0974** vs Langfuse **$0.0974**, worst per-ca
 $0.0000005 (pure rounding; both sides are SDK tokens × the same table, so agreement is by
 construction — a disagreement would have meant a plumbing bug). Per-case cost also matches
 the committed M5 `baseline.json` magnitudes (routing ≈ $0.0066/case vs baseline $0.0065).
+The cache-miss latencies in this table predate the M10 reasoning-effort change below —
+post-M10, the same probes run 1.3–3× faster.
+
+### Latency: where the time goes (M10, ADR-047)
+
+Methodology in two sentences: 6 representative conversations (a knowledge refusal, an
+answerable question, a semantic-cache hit, a ≤$500 auto-placed order, an incident
+dedup-link, a multi-intent report) were driven through `POST /chat` 3× each, and every
+turn's Langfuse trace was decomposed into its spans — router generation, specialist
+generations, tool calls, handoffs, app overhead (script + raw data:
+`ignore/tem/m10_latency_baseline.py` / `.json`).
+
+**The span-attribution finding: 97–99% of every cache-miss conversation is LLM generation
+time.** All tool calls together (SQL, embeddings, RRF search) cost 0.02–0.7 s; handoffs and
+app overhead are milliseconds. The surprise inside that number: the *tool-less router* —
+one forced classification call — was burning 6–18 s per conversation, and the answer's
+token bill was mostly invisible: a Bluetooth-refusal turn billed ~1,800 output tokens of
+which only ~60 are the visible refusal — the rest were **reasoning tokens** at the
+gpt-5-family default effort (`medium` when the request doesn't specify, which this app
+never did before M10).
+
+The fix is configuration, not architecture — three settings in `config.py`, env-overridable,
+wired into each agent's `ModelSettings(reasoning=…)`: `ROUTER_REASONING_EFFORT=minimal`
+(a single-label classification needs no deliberation — 0 reasoning tokens, routing suite
+30/30 three consecutive runs), `SPECIALIST_REASONING_EFFORT=low` for fulfillment + incident
+(keeps a thinking budget for order forms and dedup gray-band judgment; every gate green),
+and `KNOWLEDGE_REASONING_EFFORT=medium` — knowledge is deliberately **carved out**: at
+`low` it kept refusing out-of-KB questions but decorated 5/13 refusals on the
+facts-injected chat path with the forbidden "Sources:" list, violating the ADR-017 output
+contract *and* leaking refusals into the semantic cache through the ADR-023 write-time
+gate (0/6 + zero historical occurrences at `medium`; caught by the e2e refusal flow's 1.0
+floor, isolated with `ignore/tem/m10_smartwatch_http_probe.py`). Passthrough was verified
+against the logged OpenAI request (`'reasoning': {'effort': …}` in the `/responses`
+payload) and the billed reasoning-token counts — not assumed
+(`ignore/tem/m10_reasoning_passthrough.py`).
+
+Before/after on the same 6 probes, 3 reps each (p50 wall of the whole conversation; span
+means; cost per conversation from the priced generation spans):
+
+| probe | wall p50 | router gen | specialist gen | cost |
+|---|---|---|---|---|
+| knowledge refusal (Bluetooth) | 24.2 s → **12.3 s (−49%)** | 10.7 → 1.4 s | 12.2 → 10.6 s | $0.0055 → $0.0031 |
+| knowledge answerable (MFA) | 19.4 s → **15.0 s (−23%)** | 6.9 → 1.1 s | 11.4 → 12.7 s | $0.0048 → $0.0036 |
+| semantic-cache hit | 0.07 s → 0.09 s | — | — | $0 |
+| order auto-place (2 turns) | 33.1 s → **11.0 s (−67%)** | 13.3 → 2.1 s | 20.1 → 8.8 s | $0.0164 → $0.0081 |
+| incident dedup-link | 27.3 s → **13.0 s (−52%)** | 6.0 → 1.6 s | 20.2 → 10.6 s | $0.0108 → $0.0051 |
+| multi-intent (2 turns) | 64.4 s → **42.5 s (−34%)** | 17.9 → 3.7 s | 45.8 → 37.5 s | $0.0263 → $0.0160 |
+
+Knowledge-heavy flows keep only the router saving (their specialist stays at `medium` per
+the carve-out); fulfillment/incident flows keep the full effort win. Cost dropped 24–53%
+alongside latency (reasoning tokens bill as output tokens), and the PR-gate eval subset
+itself got cheaper ($0.10 → $0.07 measured). Eval floors are untouched and green at the
+final defaults: e2e **18/18**, full routing 30/30 (accuracy 1.000, hard 6/6, zero
+ping-pong/integrity), retrieval recall@5 1.000 / refusals 10/10 / false refusals 0, dedup
+0.917 vs floor 0.65, slack 5/5.
+
+A `gpt-5-nano` router was also measured — and rejected (ADR-047): full routing suite twice
+at 0.933 / **0.900 (exactly the floor, zero margin**, vs mini's 1.000/1.000, with a
+repeated misroute and ping-pong appearing), for a latency win that no longer exists — the
+mini router at `minimal` effort is already 1–1.4 s.
+
+**The honest structural floor:** a cache-miss turn is still ≥2 sequential gpt-5-mini calls
+(router classification → specialist tool round-trips → final composition), so ~5–9 s of
+serial generation remains at any effort — that floor is why perceived latency is M11's
+(streaming) job, not another knob here.
 
 ### Caching A/B (ADR-044)
 

@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from agents import Agent, ModelSettings
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
+from openai.types.shared import Reasoning
 
 from app.agents.context import ChatContext
 from app.agents.fulfillment import fulfillment_agent
@@ -78,7 +79,13 @@ router_agent = Agent[ChatContext](
     input_guardrails=[slack_injection_guardrail],
     # Force the handoff (ADR-018): a tool-less router with tool_choice="required" must emit one
     # of its handoffs rather than narrate "Routing to knowledge…" and end the turn.
-    model_settings=ModelSettings(tool_choice="required"),
+    # Reasoning effort (M10, ADR-047): the router emits ONE forced classification call — at the
+    # unset-API default ("medium") that call spent more time on hidden reasoning tokens than on
+    # the handoff itself. Config-driven; see config.py for the measured rationale.
+    model_settings=ModelSettings(
+        tool_choice="required",
+        reasoning=Reasoning(effort=get_settings().router_reasoning_effort),
+    ),
     # …and keep forcing it on every later acting turn (ADR-022): the SDK counts a HANDOFF as
     # tool use, so the default reset_tool_choice=True would flip the router to "auto" after its
     # first handoff — and when a specialist back-edges mid-run, an "auto" router can emit text

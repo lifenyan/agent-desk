@@ -56,7 +56,7 @@ test:  ## run unit tests
 eval:  ## FULL eval run: retrieval (40) + routing (30) + e2e (18 flows) + dedup + quality + graph — nightly-sized, use sparingly
 	python -m evals.run_evals
 
-eval-subset:  ## the cost-capped PR gate (ADR-026): full retrieval + 10 routing cases, ~$0.10/run measured 2026-07
+eval-subset:  ## the cost-capped PR gate (ADR-026): full retrieval + 10 routing cases, ~$0.07/run measured 2026-07-12 (was $0.10 pre-ADR-047)
 	python -m evals.run_evals --subset
 
 ci-local:  ## what ci.yml gates on, runnable locally: lint, format check, tests, eval subset

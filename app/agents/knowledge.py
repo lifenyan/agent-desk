@@ -27,6 +27,7 @@ from __future__ import annotations
 from agents import Agent, ModelSettings
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.extensions.models.litellm_model import LitellmModel
+from openai.types.shared import Reasoning
 
 from app.agents.context import ChatContext
 from app.config import get_settings
@@ -88,5 +89,11 @@ knowledge_agent = Agent[ChatContext](
     model=resolve_model(get_settings().specialist_model),
     # Force a tool call on the acting turn (ADR-018); reset_tool_choice (default True) frees the
     # model to write the final answer/refusal after the search returns.
-    model_settings=ModelSettings(tool_choice="required"),
+    # Reasoning effort (M10, ADR-047): config-driven, measured — and deliberately the
+    # KNOWLEDGE-specific setting, not the shared specialist one: the stage-2 refusal
+    # judgment degrades at "low" (Sources-decorated refusals) — see config.py.
+    model_settings=ModelSettings(
+        tool_choice="required",
+        reasoning=Reasoning(effort=get_settings().knowledge_reasoning_effort),
+    ),
 )
