@@ -10,3 +10,9 @@ textColor = "#e5e7eb"
 
 [server]
 headless = true
+
+# Viewer mode hides the developer toolbar (Deploy button, app menu's dev entries) AND the
+# dev keyboard shortcuts — on localhost Streamlit otherwise runs in dev mode, where the "c"
+# key (which Cmd+C can leak through as) opens the "Clear caches" dialog mid-text-selection.
+[client]
+toolbarMode = "viewer"

@@ -3,9 +3,10 @@ search_similar_tickets.
 
 The ONLY place ticket writes/dedup-reads touch the database (ADR-004). Plain functions first
 (unit-testable against the seeded DB), then wrapped with @function_tool (`*_tool` names).
-get_ticket_status (M8) deliberately has NO agent wrapper: it exists for the MCP server, which
-adapts the same plain layer with its own decorator (ADR-040 — one tool surface, two adapters;
-the chat agents read status through their richer tools instead).
+get_ticket_status started (M8) as MCP-only (ADR-040 — one tool surface, two adapters); the
+record-numbers feature (ADR-046) promoted it onto the incident agent too: users quote TKTnnn
+numbers and "what's the status of TKT042?" needs a direct read, which no other tool gave the
+agent.
 
 Argument trust (DESIGN NOTE in user_tools.py): the reporter's identity comes from the run
 context, never an LLM argument; user-referenced ids (asset_id, ticket_id) are validated
@@ -24,8 +25,12 @@ raw scores.
 
 from __future__ import annotations
 
+import re
+
 from agents import RunContextWrapper, function_tool
+from sqlalchemy import select
 from sqlalchemy import text as sql_text
+from sqlalchemy.orm import Session
 
 from app.agents.context import ChatContext
 from app.cache.embedding_cache import get_or_embed
@@ -55,6 +60,27 @@ DEDUP_SIMILARITY_THRESHOLD = 0.80
 def _embed_ticket_text(title: str, description: str) -> list[float]:
     # MUST match app/rag/ingest.py::ingest_tickets — one vector space for old + new tickets.
     return get_or_embed([f"{title}\n\n{description}"])[0]
+
+
+_TICKET_NUMBER_RE = re.compile(r"^TKT\d{3,}$")
+
+
+def _resolve_ticket_ref(session: Session, ticket_ref: str) -> Ticket | dict:
+    """Fetch a ticket by UUID or by user-facing number (TKTnnn, ADR-046).
+
+    Users quote numbers ("what's the status of TKT042?"), prior tool payloads carry UUIDs —
+    the ticket_id argument accepts both. Error dicts follow the house feedback pattern."""
+    ref = (ticket_ref or "").strip().upper()
+    if _TICKET_NUMBER_RE.match(ref):
+        ticket = session.scalar(select(Ticket).where(Ticket.number == ref))
+    else:
+        ticket_uuid = parse_uuid_arg(ticket_ref, "ticket_id")
+        if isinstance(ticket_uuid, dict):
+            return ticket_uuid
+        ticket = session.get(Ticket, ticket_uuid)
+    if ticket is None:
+        return {"error": f"ticket {ticket_ref} not found"}
+    return ticket
 
 
 def create_ticket(
@@ -114,6 +140,7 @@ def create_ticket(
         return {
             "ticket": {
                 "ticket_id": str(ticket.id),
+                "number": ticket.number,  # the user-facing handle — quote THIS, never the id
                 "title": ticket.title,
                 "category": ticket.category,
                 "priority": ticket.priority,
@@ -135,7 +162,7 @@ def update_ticket(
     ticket's dedup embedding). Pass only the fields to change.
 
     Args:
-        ticket_id: UUID of the ticket to update.
+        ticket_id: UUID or ticket number (e.g. "TKT042") of the ticket to update.
         status: New status (open, in_progress, resolved, closed).
         priority: New priority (low, medium, high, critical).
         category: New category (accounts, software, hardware, network, email, other).
@@ -151,12 +178,9 @@ def update_ticket(
         user = resolve_acting_user(session, ctx)
         if isinstance(user, dict):
             return user
-        ticket_uuid = parse_uuid_arg(ticket_id, "ticket_id")
-        if isinstance(ticket_uuid, dict):
-            return ticket_uuid
-        ticket = session.get(Ticket, ticket_uuid)
-        if ticket is None:
-            return {"error": f"ticket {ticket_id} not found"}
+        ticket = _resolve_ticket_ref(session, ticket_id)
+        if isinstance(ticket, dict):
+            return ticket
         if ticket.user_id != user.id:
             return {"error": f"ticket {ticket_id} does not belong to the current user"}
         if status is None and priority is None and category is None:
@@ -171,6 +195,7 @@ def update_ticket(
         return {
             "ticket": {
                 "ticket_id": str(ticket.id),
+                "number": ticket.number,
                 "status": ticket.status,
                 "priority": ticket.priority,
                 "category": ticket.category,
@@ -187,19 +212,16 @@ def add_ticket_comment(ctx: RunContextWrapper[ChatContext], ticket_id: str, body
     ownership: "me too" reports on someone else's ticket are the point.
 
     Args:
-        ticket_id: UUID of the ticket to comment on.
+        ticket_id: UUID or ticket number (e.g. "TKT042") of the ticket to comment on.
         body: The comment text.
     """
     with SessionLocal() as session:
         user = resolve_acting_user(session, ctx)
         if isinstance(user, dict):
             return user
-        ticket_uuid = parse_uuid_arg(ticket_id, "ticket_id")
-        if isinstance(ticket_uuid, dict):
-            return ticket_uuid
-        ticket = session.get(Ticket, ticket_uuid)
-        if ticket is None:
-            return {"error": f"ticket {ticket_id} not found"}
+        ticket = _resolve_ticket_ref(session, ticket_id)
+        if isinstance(ticket, dict):
+            return ticket
         comment = TicketComment(ticket_id=ticket.id, author_id=user.id, body=body)
         session.add(comment)
         session.commit()
@@ -207,6 +229,7 @@ def add_ticket_comment(ctx: RunContextWrapper[ChatContext], ticket_id: str, body
             "comment": {
                 "comment_id": str(comment.id),
                 "ticket_id": str(ticket.id),
+                "ticket_number": ticket.number,
                 "ticket_title": ticket.title,
                 "ticket_status": ticket.status,
             }
@@ -218,18 +241,15 @@ def get_ticket_status(ctx: RunContextWrapper[ChatContext], ticket_id: str) -> di
     category, and the latest comment (support updates land there).
 
     Args:
-        ticket_id: UUID of the ticket to look up.
+        ticket_id: UUID or ticket number (e.g. "TKT042") of the ticket to look up.
     """
     with SessionLocal() as session:
         user = resolve_acting_user(session, ctx)
         if isinstance(user, dict):
             return user
-        ticket_uuid = parse_uuid_arg(ticket_id, "ticket_id")
-        if isinstance(ticket_uuid, dict):
-            return ticket_uuid
-        ticket = session.get(Ticket, ticket_uuid)
-        if ticket is None:
-            return {"error": f"ticket {ticket_id} not found"}
+        ticket = _resolve_ticket_ref(session, ticket_id)
+        if isinstance(ticket, dict):
+            return ticket
         # Ownership: reading another user's ticket is an information leak (MCP exposes this
         # to external clients — M8). Contrast add_ticket_comment, which deliberately allows
         # foreign tickets because "me too" dedup-linking is its purpose.
@@ -239,6 +259,7 @@ def get_ticket_status(ctx: RunContextWrapper[ChatContext], ticket_id: str) -> di
         return {
             "ticket": {
                 "ticket_id": str(ticket.id),
+                "number": ticket.number,
                 "title": ticket.title,
                 "status": ticket.status,
                 "priority": ticket.priority,
@@ -277,7 +298,7 @@ def search_similar_tickets(
         rows = session.execute(
             sql_text(
                 """
-                SELECT id, user_id, title, status, category, priority,
+                SELECT id, number, user_id, title, status, category, priority,
                        1 - (embedding <=> CAST(:qvec AS vector)) AS similarity
                 FROM tickets
                 WHERE embedding IS NOT NULL
@@ -304,6 +325,7 @@ def search_similar_tickets(
             "candidates": [
                 {
                     "ticket_id": str(r["id"]),
+                    "number": r["number"],
                     "title": r["title"],
                     "status": r["status"],
                     "category": r["category"],
@@ -317,8 +339,33 @@ def search_similar_tickets(
         }
 
 
+def get_ticket_details(ref: str) -> dict | None:
+    """Full ticket detail for the chat UI's ?ticket= page (routes_records) — NOT an agent tool.
+
+    Accepts TKTnnn or UUID. Auth is deliberately out of scope (the stated cut line, same as
+    routes_approvals): whoever reaches the API sees the demo data. None = not found."""
+    with SessionLocal() as session:
+        ticket = _resolve_ticket_ref(session, ref)
+        if isinstance(ticket, dict):
+            return None
+        comments = sorted(ticket.comments, key=lambda c: c.created_at)
+        return {
+            "number": ticket.number,
+            "title": ticket.title,
+            "description": ticket.description,
+            "type": ticket.type,
+            "category": ticket.category,
+            "priority": ticket.priority,
+            "status": ticket.status,
+            "comments": [
+                {"body": c.body, "created_at": c.created_at.isoformat()} for c in comments
+            ],
+        }
+
+
 # --- Agents SDK wrappers (schema derived from the signatures + docstrings above) ---
 create_ticket_tool = function_tool(create_ticket)
+get_ticket_status_tool = function_tool(get_ticket_status)
 update_ticket_tool = function_tool(update_ticket)
 add_ticket_comment_tool = function_tool(add_ticket_comment)
 search_similar_tickets_tool = function_tool(search_similar_tickets)

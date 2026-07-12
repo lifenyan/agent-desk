@@ -459,3 +459,43 @@ def test_articles_route_is_bound_to_its_handler():
     ]
     assert len(article_routes) == 1
     assert article_routes[0].endpoint.__name__ == "get_article"
+
+
+class _FakeToolOutputItem:
+    type = "tool_call_output_item"
+
+    def __init__(self, output):
+        self.output = output
+
+
+def test_confirm_ticket_actions_appends_numbers_the_model_dropped():
+    """Backstop for the observed 'I'll open a ticket now…' final message with the ticket
+    already created: write-tool numbers absent from the answer get appended; reads never do."""
+    from app.api.routes_chat import _confirm_ticket_actions
+
+    items = [
+        _FakeToolOutputItem({"ticket": {"number": "TKT313", "title": "t", "status": "open"}}),
+        _FakeToolOutputItem({"comment": {"comment_id": "c", "ticket_number": "TKT042"}}),
+        # get_ticket_status is a READ (comment fields mark it) — nothing to confirm:
+        _FakeToolOutputItem(
+            {"ticket": {"number": "TKT100", "status": "open", "latest_comment": None}}
+        ),
+        # duplicate via the string-encoded shape the SDK sometimes hands back:
+        _FakeToolOutputItem('{"ticket": {"number": "TKT313", "status": "open"}}'),
+    ]
+    out = _confirm_ticket_actions("Understood — I'll open a ticket now.", items)
+    assert "TKT313" in out and "TKT042" in out
+    assert "TKT100" not in out
+    assert out.count("TKT313") == 1
+
+    already = "Done — created TKT313 and commented on TKT042."
+    assert _confirm_ticket_actions(already, items) == already
+    assert _confirm_ticket_actions("plain answer", []) == "plain answer"
+
+
+def test_record_routes_are_bound_to_their_handlers():
+    """Same pin for the ticket/order detail endpoints behind the UI's record links (ADR-046)."""
+    from app.api.routes_records import router
+
+    bound = {r.path: r.endpoint.__name__ for r in router.routes if hasattr(r, "endpoint")}
+    assert bound == {"/tickets/{ref}": "ticket_detail", "/orders/{ref}": "order_detail"}

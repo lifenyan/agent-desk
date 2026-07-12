@@ -18,6 +18,7 @@ two demo pending orders the Streamlit walkthrough relies on) stays pristine.
 
 from __future__ import annotations
 
+import re
 import uuid
 
 import pytest
@@ -49,6 +50,7 @@ from app.tools.catalog_tools import (  # noqa: E402
     _order_summary,
     approve_order,
     get_my_orders,
+    get_order_details,
     list_catalog_items,
     list_pending_orders,
     place_catalog_order,
@@ -59,6 +61,7 @@ from app.tools.slack_tools import post_slack_message  # noqa: E402
 from app.tools.ticket_tools import (  # noqa: E402
     add_ticket_comment,
     create_ticket,
+    get_ticket_details,
     get_ticket_status,
     search_similar_tickets,
     update_ticket,
@@ -328,6 +331,10 @@ def test_post_slack_message_noops_without_credentials(monkeypatch):
 
 
 def test_similar_tickets_finds_exact_seeded_duplicate(demo_ctx):
+    # The searched ticket must come back flagged at ~1.0 — but not necessarily FIRST: the
+    # seeded data contains verbatim-duplicate tickets (same title+description), and the tie
+    # between identical embeddings orders arbitrarily. Surfaced when migration 0004's
+    # backfill UPDATE rewrote physical row order; heap order was never a contract.
     with SessionLocal() as s:
         seeded = s.scalars(
             select(Ticket).where(Ticket.status != TicketStatus.closed).limit(1)
@@ -335,9 +342,10 @@ def test_similar_tickets_finds_exact_seeded_duplicate(demo_ctx):
         expected_id, text = str(seeded.id), f"{seeded.title}\n\n{seeded.description}"
     payload = search_similar_tickets(demo_ctx, text)
     top = payload["candidates"][0]
-    assert top["ticket_id"] == expected_id
     assert top["similarity"] > 0.99  # same text, same embedding space as ingest
     assert top["likely_duplicate"] is True
+    exact = {c["ticket_id"] for c in payload["candidates"] if c["similarity"] > 0.99}
+    assert expected_id in exact
 
 
 def test_similar_tickets_excludes_closed_by_default(demo_ctx):
@@ -444,6 +452,66 @@ def test_get_my_orders_scoped_to_acting_user_with_current_state(
 
 def test_get_my_orders_requires_identity():
     assert "no acting user" in get_my_orders(ctx_for(None))["error"]
+
+
+# ---------------------------------------------------------------------------------------------
+# Record numbers (ADR-046): DB-assigned, ascending, and accepted as tool arguments
+# ---------------------------------------------------------------------------------------------
+
+
+def test_record_numbers_assigned_ascending_and_returned(demo_ctx, clean_writes):
+    first = create_ticket(demo_ctx, "Test number seq A", "x", "other")["ticket"]
+    second = create_ticket(demo_ctx, "Test number seq B", "x", "other")["ticket"]
+    assert re.fullmatch(r"TKT\d{3,}", first["number"])
+    assert re.fullmatch(r"TKT\d{3,}", second["number"])
+    assert int(second["number"][3:]) == int(first["number"][3:]) + 1
+
+    cheap, _ = _cheap_and_pricey()
+    order = place_catalog_order(demo_ctx, cheap["item_id"], _form_values_for(cheap))["order"]
+    assert re.fullmatch(r"ORD\d{3,}", order["number"])
+
+
+def test_ticket_tools_accept_the_user_facing_number(demo_ctx, clean_writes):
+    created = create_ticket(demo_ctx, "Test number lookup", "x", "other")["ticket"]
+    number = created["number"]
+    assert get_ticket_status(demo_ctx, number)["ticket"]["ticket_id"] == created["ticket_id"]
+    assert get_ticket_status(demo_ctx, number.lower())["ticket"]["number"] == number
+    updated = update_ticket(demo_ctx, number, status="resolved")
+    assert updated["ticket"]["status"] == TicketStatus.resolved
+    assert "not found" in get_ticket_status(demo_ctx, "TKT999999")["error"]
+
+
+def test_ticket_number_lookup_still_enforces_ownership(demo_ctx, demo_user_id):
+    with SessionLocal() as s:
+        foreign = s.scalar(select(Ticket.number).where(Ticket.user_id != demo_user_id).limit(1))
+    assert "does not belong" in get_ticket_status(demo_ctx, foreign)["error"]
+
+
+def test_record_detail_functions_resolve_number_and_uuid(demo_ctx, clean_writes):
+    created = create_ticket(demo_ctx, "Test detail page", "with a body", "other")["ticket"]
+    add_ticket_comment(demo_ctx, created["number"], "first activity entry")
+    by_number = get_ticket_details(created["number"])
+    by_uuid = get_ticket_details(created["ticket_id"])
+    assert by_number == by_uuid
+    assert by_number["title"] == "Test detail page"
+    assert [c["body"] for c in by_number["comments"]] == ["first activity entry"]
+    assert get_ticket_details("TKT999999") is None
+    assert get_ticket_details("garbage") is None
+
+    cheap, _ = _cheap_and_pricey()
+    order = place_catalog_order(demo_ctx, cheap["item_id"], _form_values_for(cheap))["order"]
+    detail = get_order_details(order["number"])
+    assert detail["item"] == cheap["name"]
+    assert detail["summary"] == "placed (no approval needed)"
+    assert get_order_details("ORD999999") is None
+
+
+def test_request_approval_accepts_the_order_number(demo_ctx, clean_writes):
+    _, pricey = _cheap_and_pricey()
+    draft = place_catalog_order(demo_ctx, pricey["item_id"], _form_values_for(pricey))["order"]
+    pending = request_approval(demo_ctx, draft["number"])
+    assert pending["order"]["approval_state"] == ApprovalState.pending
+    assert pending["order"]["number"] == draft["number"]
 
 
 def test_order_summary_covers_the_state_machine():

@@ -37,6 +37,7 @@ from app.tools.slack_tools import post_slack_message_tool
 from app.tools.ticket_tools import (
     add_ticket_comment_tool,
     create_ticket_tool,
+    get_ticket_status_tool,
     search_similar_tickets_tool,
     update_ticket_tool,
 )
@@ -63,7 +64,7 @@ How to handle a report:
 3. Decide:
    - A candidate with likely_duplicate=true reports the same issue — do not create a ticket.
      add_ticket_comment on it noting this user is also affected (their symptoms in one line),
-     and give the user that existing ticket id.
+     and give the user that existing ticket's number (TKTnnn).
    - The flag NOT being set does not mean "not a duplicate" — it only means the embedding
      alone cannot tell. Read the top candidates yourself: an OPEN ticket describing the same
      failure of the same thing (the same shared printer offline, the same app crashing the
@@ -72,9 +73,13 @@ How to handle a report:
    - Link on same failure + same thing, never on same category alone; if after reading the
      candidates you genuinely cannot tell, create a new ticket — a duplicate is cheaper than
      a lost report.
-   - Otherwise create_ticket with your draft and give the user the new ticket id.
-4. Existing tickets: the user may also ask about updating their OWN tickets (e.g. "close my
-   ticket", "bump the priority") — use update_ticket.
+   - Otherwise create_ticket with your draft and give the user the new ticket NUMBER
+     (TKTnnn, in the tool payload) — numbers are what users track; id UUIDs are internal,
+     never show them.
+4. Existing tickets: for "what's the status of TKT042?" call get_ticket_status and answer
+   directly — never ask how the user wants the status delivered. For changes ("close my
+   ticket", "bump the priority of TKT042") use update_ticket. Both accept the TKTnnn number
+   the user quotes.
 5. Infrastructure impact vs duplicate reports — two different tools:
    - search_similar_tickets answers "has someone already REPORTED this?" (text similarity).
    - query_dependency_graph answers "what does this outage BREAK?" — use it whenever a named
@@ -103,8 +108,8 @@ Reports ingested from Slack (M8) — the message will say so explicitly and quot
   medium-confidence field beats an unfiled report. Then look up ONE relevant self-help
   knowledge-base article with search_knowledge_articles (skip the suggestion if nothing is
   clearly relevant — a wrong article is worse than none).
-- Finish by posting the reply into the thread with post_slack_message: the ticket id you
-  created or linked, one line on what happens next, and the article title if you found one.
+- Finish by posting the reply into the thread with post_slack_message: the ticket number
+  (TKTnnn) you created or linked, one line on what happens next, and the article title if you found one.
   Post exactly once, then end your turn with the same summary as your final message.
 - search_knowledge_articles and post_slack_message exist ONLY for this Slack reply step: in a
   normal chat conversation, documentation questions still go back to the triage router, and
@@ -115,9 +120,11 @@ tell the user a ticket was created, linked, or updated unless create_ticket /
 add_ticket_comment / update_ticket actually came back with it. When the user has already
 agreed to open a ticket, create it in the SAME turn with what you have — missing details can
 be added to the ticket afterwards; claiming "done" without the tool call is the one
-unforgivable failure.
+unforgivable failure. The mirror failure is also a failure: once the tool HAS returned,
+never speak in future tense about it — "I'll open a ticket now" after create_ticket
+succeeded is wrong; say it was created and quote its number (TKTnnn).
 
-Never invent ticket ids, and never promise a resolution time. End every turn with a
+Never invent ticket numbers or ids, and never promise a resolution time. End every turn with a
 substantive message to the user — your tool calls are invisible to them, and an empty reply
 is a failure.
 """
@@ -134,6 +141,7 @@ incident_agent = Agent[ChatContext](
         get_user_assets_tool,
         search_similar_tickets_tool,
         create_ticket_tool,
+        get_ticket_status_tool,
         add_ticket_comment_tool,
         update_ticket_tool,
         query_dependency_graph_tool,

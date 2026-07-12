@@ -34,7 +34,10 @@ def _decide(order_id: str, action: str) -> None:
         response.raise_for_status()
         order = response.json()
         icon = "✅" if action == "approve" else "🚫"
-        st.toast(f"{icon} {action}d: {order['item']} for {order['requester_name']}")
+        st.toast(
+            f"{icon} {action}d: {order.get('number', '')} — {order['item']} "
+            f"for {order['requester_name']}"
+        )
     except httpx.HTTPError as exc:
         st.error(f"{action} failed: `{exc}`")
 
@@ -58,7 +61,10 @@ for order in pending:
                 f"({order['org']})"
             )
             st.markdown(
-                theme.pills(theme.pill("awaiting approval", "pending")),
+                theme.pills(
+                    theme.pill(order.get("number", ""), "knowledge"),
+                    theme.pill("awaiting approval", "pending"),
+                ),
                 unsafe_allow_html=True,
             )
             if order["form_values"]:
