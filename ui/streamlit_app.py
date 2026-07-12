@@ -29,9 +29,20 @@ AVATARS = {"knowledge": "📚", "fulfillment": "🛒", "incident": "🛠️", "g
 # so the footer is redundant on screen — strip it from the DISPLAYED text only.
 _SOURCES_FOOTER = re.compile(r"\n+Sources:\s*\n.*\Z", re.DOTALL)
 
+# Record numbers (ADR-046) in agent replies become links to the ?ticket=/?order= detail
+# pages — display-side, deterministic, no agent-instruction involvement. Markdown links
+# open in a new tab, so the running chat is never reloaded (same as citation links).
+_RECORD_LINKS = [
+    (re.compile(r"\b(TKT\d{3,})\b"), "ticket"),
+    (re.compile(r"\b(ORD\d{3,})\b"), "order"),
+]
+
 
 def display_answer(answer: str) -> str:
-    return _SOURCES_FOOTER.sub("", answer).rstrip()
+    text = _SOURCES_FOOTER.sub("", answer).rstrip()
+    for rx, kind in _RECORD_LINKS:
+        text = rx.sub(rf"[\1](/?{kind}=\1)", text)
+    return text
 
 
 st.set_page_config(page_title="agentdesk", page_icon="🎫")
@@ -61,6 +72,64 @@ if article_id := st.query_params.get("article"):
     st.markdown(f'<div class="ad-meta">{"".join(meta)}</div>', unsafe_allow_html=True)
     st.divider()
     st.markdown(article["body"])
+    st.stop()
+
+
+# --- Ticket page (?ticket=TKTnnn): the record-link target, stateless like the article page --
+if ticket_ref := st.query_params.get("ticket"):
+    st.markdown(theme.header("Agent desk", "support ticket"), unsafe_allow_html=True)
+    try:
+        response = httpx.get(f"{API_URL}/tickets/{ticket_ref}", timeout=15.0)
+        response.raise_for_status()
+        ticket = response.json()
+    except httpx.HTTPError:
+        st.error("This ticket doesn't exist.")
+        st.stop()
+    st.title(f"{ticket['number']} — {ticket['title']}")
+    pills = "".join(
+        [
+            theme.pill(ticket["status"], "incident"),
+            theme.pill(f"priority: {ticket['priority']}"),
+            theme.pill(ticket["category"]),
+            theme.pill(ticket["type"]),
+        ]
+    )
+    st.markdown(f'<div class="ad-meta">{pills}</div>', unsafe_allow_html=True)
+    st.divider()
+    st.markdown(ticket["description"])
+    if ticket["comments"]:
+        st.subheader(f"Activity ({len(ticket['comments'])})")
+        for c in ticket["comments"]:
+            with st.container(border=True):
+                st.markdown(c["body"])
+                st.caption(c["created_at"][:16].replace("T", " "))
+    st.stop()
+
+
+# --- Order page (?order=ORDnnn) ------------------------------------------------------------
+if order_ref := st.query_params.get("order"):
+    st.markdown(theme.header("Agent desk", "catalog order"), unsafe_allow_html=True)
+    try:
+        response = httpx.get(f"{API_URL}/orders/{order_ref}", timeout=15.0)
+        response.raise_for_status()
+        order = response.json()
+    except httpx.HTTPError:
+        st.error("This order doesn't exist.")
+        st.stop()
+    st.title(f"{order['number']} — {order['item']}")
+    st.markdown(
+        f'<div class="ad-meta">{theme.pill(order["summary"], "fulfillment")}</div>',
+        unsafe_allow_html=True,
+    )
+    st.divider()
+    st.markdown(
+        f"**${order['price_usd']:,.2f}** — requested by **{order['requester_name']}** "
+        f"({order['org']})"
+    )
+    if order["form_values"]:
+        st.subheader("Order form")
+        for k, v in order["form_values"].items():
+            st.markdown(f"- **{k}**: {v}")
     st.stop()
 
 
@@ -131,11 +200,17 @@ def render_assistant(msg: dict, *, key: int | None = None) -> None:
                 theme.citation_link(c["title"], c["article_id"]) for c in msg["citations"]
             )
             st.markdown(f'<div class="ad-citations">{cards}</div>', unsafe_allow_html=True)
-    # Only the newest refusal gets the escalation button (key is its position in history —
+    # Only the newest refusal gets the escalation buttons (key is its position in history —
     # stable across reruns, so the click is never lost to a changing widget key).
     if key is not None and _is_refusal(msg):
-        if st.button("🙋 Connect to a human agent", key=f"human-{key}"):
-            st.session_state.pending_prompt = HUMAN_HANDOFF_MESSAGE
+        left, right = st.columns(2)
+        with left:
+            if st.button("🎫 Create a ticket", key=f"ticket-{key}", use_container_width=True):
+                st.session_state.pending_prompt = HUMAN_HANDOFF_MESSAGE
+        with right:
+            # Deliberately inert (product mock — no live-agent backend exists). The click
+            # still reruns the script, which redraws the same transcript: a visible no-op.
+            st.button("💬 Connect to live agent", key=f"live-{key}", use_container_width=True)
 
 
 def avatar_for(msg: dict) -> str:

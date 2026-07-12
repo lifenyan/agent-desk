@@ -14,7 +14,13 @@ load_dotenv()
 
 from fastapi import FastAPI  # noqa: E402
 
-from app.api import routes_approvals, routes_articles, routes_chat, routes_health  # noqa: E402
+from app.api import (  # noqa: E402
+    routes_approvals,
+    routes_articles,
+    routes_chat,
+    routes_health,
+    routes_records,
+)
 from app.config import get_settings  # noqa: E402
 from app.observability import tracing  # noqa: E402
 
@@ -45,6 +51,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_chat.router)
     app.include_router(routes_approvals.router)
     app.include_router(routes_articles.router)
+    app.include_router(routes_records.router)
     return app
 
 

@@ -50,6 +50,7 @@ from app.tools.catalog_tools import (  # noqa: E402
     _order_summary,
     approve_order,
     get_my_orders,
+    get_order_details,
     list_catalog_items,
     list_pending_orders,
     place_catalog_order,
@@ -60,6 +61,7 @@ from app.tools.slack_tools import post_slack_message  # noqa: E402
 from app.tools.ticket_tools import (  # noqa: E402
     add_ticket_comment,
     create_ticket,
+    get_ticket_details,
     get_ticket_status,
     search_similar_tickets,
     update_ticket,
@@ -329,6 +331,10 @@ def test_post_slack_message_noops_without_credentials(monkeypatch):
 
 
 def test_similar_tickets_finds_exact_seeded_duplicate(demo_ctx):
+    # The searched ticket must come back flagged at ~1.0 — but not necessarily FIRST: the
+    # seeded data contains verbatim-duplicate tickets (same title+description), and the tie
+    # between identical embeddings orders arbitrarily. Surfaced when migration 0004's
+    # backfill UPDATE rewrote physical row order; heap order was never a contract.
     with SessionLocal() as s:
         seeded = s.scalars(
             select(Ticket).where(Ticket.status != TicketStatus.closed).limit(1)
@@ -336,9 +342,10 @@ def test_similar_tickets_finds_exact_seeded_duplicate(demo_ctx):
         expected_id, text = str(seeded.id), f"{seeded.title}\n\n{seeded.description}"
     payload = search_similar_tickets(demo_ctx, text)
     top = payload["candidates"][0]
-    assert top["ticket_id"] == expected_id
     assert top["similarity"] > 0.99  # same text, same embedding space as ingest
     assert top["likely_duplicate"] is True
+    exact = {c["ticket_id"] for c in payload["candidates"] if c["similarity"] > 0.99}
+    assert expected_id in exact
 
 
 def test_similar_tickets_excludes_closed_by_default(demo_ctx):
@@ -478,6 +485,25 @@ def test_ticket_number_lookup_still_enforces_ownership(demo_ctx, demo_user_id):
     with SessionLocal() as s:
         foreign = s.scalar(select(Ticket.number).where(Ticket.user_id != demo_user_id).limit(1))
     assert "does not belong" in get_ticket_status(demo_ctx, foreign)["error"]
+
+
+def test_record_detail_functions_resolve_number_and_uuid(demo_ctx, clean_writes):
+    created = create_ticket(demo_ctx, "Test detail page", "with a body", "other")["ticket"]
+    add_ticket_comment(demo_ctx, created["number"], "first activity entry")
+    by_number = get_ticket_details(created["number"])
+    by_uuid = get_ticket_details(created["ticket_id"])
+    assert by_number == by_uuid
+    assert by_number["title"] == "Test detail page"
+    assert [c["body"] for c in by_number["comments"]] == ["first activity entry"]
+    assert get_ticket_details("TKT999999") is None
+    assert get_ticket_details("garbage") is None
+
+    cheap, _ = _cheap_and_pricey()
+    order = place_catalog_order(demo_ctx, cheap["item_id"], _form_values_for(cheap))["order"]
+    detail = get_order_details(order["number"])
+    assert detail["item"] == cheap["name"]
+    assert detail["summary"] == "placed (no approval needed)"
+    assert get_order_details("ORD999999") is None
 
 
 def test_request_approval_accepts_the_order_number(demo_ctx, clean_writes):

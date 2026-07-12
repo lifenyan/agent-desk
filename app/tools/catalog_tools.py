@@ -348,6 +348,30 @@ def reject_order(order_id: str) -> dict:
         return _serialize_pending(session, order)
 
 
+def get_order_details(ref: str) -> dict | None:
+    """Full order detail for the chat UI's ?order= page (routes_records) — NOT an agent tool.
+
+    Accepts ORDnnn or UUID. Auth deliberately out of scope (same cut line as the approvals
+    API). None = not found."""
+    with SessionLocal() as session:
+        order = _resolve_order_ref(session, ref)
+        if isinstance(order, dict):
+            return None
+        item = session.get(CatalogItem, order.item_id)
+        requester = session.get(User, order.user_id)
+        return {
+            "number": order.number,
+            "item": item.name,
+            "price_usd": float(item.price),
+            "status": order.status,
+            "approval_state": order.approval_state,
+            "summary": _order_summary(order),
+            "form_values": order.form_values,
+            "requester_name": requester.name,
+            "org": requester.org,
+        }
+
+
 # --- Agents SDK wrappers (schema derived from the signatures + docstrings above) ---
 list_catalog_items_tool = function_tool(list_catalog_items)
 get_my_orders_tool = function_tool(get_my_orders)

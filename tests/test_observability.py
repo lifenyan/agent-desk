@@ -459,3 +459,11 @@ def test_articles_route_is_bound_to_its_handler():
     ]
     assert len(article_routes) == 1
     assert article_routes[0].endpoint.__name__ == "get_article"
+
+
+def test_record_routes_are_bound_to_their_handlers():
+    """Same pin for the ticket/order detail endpoints behind the UI's record links (ADR-046)."""
+    from app.api.routes_records import router
+
+    bound = {r.path: r.endpoint.__name__ for r in router.routes if hasattr(r, "endpoint")}
+    assert bound == {"/tickets/{ref}": "ticket_detail", "/orders/{ref}": "order_detail"}

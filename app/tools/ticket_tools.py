@@ -339,6 +339,30 @@ def search_similar_tickets(
         }
 
 
+def get_ticket_details(ref: str) -> dict | None:
+    """Full ticket detail for the chat UI's ?ticket= page (routes_records) — NOT an agent tool.
+
+    Accepts TKTnnn or UUID. Auth is deliberately out of scope (the stated cut line, same as
+    routes_approvals): whoever reaches the API sees the demo data. None = not found."""
+    with SessionLocal() as session:
+        ticket = _resolve_ticket_ref(session, ref)
+        if isinstance(ticket, dict):
+            return None
+        comments = sorted(ticket.comments, key=lambda c: c.created_at)
+        return {
+            "number": ticket.number,
+            "title": ticket.title,
+            "description": ticket.description,
+            "type": ticket.type,
+            "category": ticket.category,
+            "priority": ticket.priority,
+            "status": ticket.status,
+            "comments": [
+                {"body": c.body, "created_at": c.created_at.isoformat()} for c in comments
+            ],
+        }
+
+
 # --- Agents SDK wrappers (schema derived from the signatures + docstrings above) ---
 create_ticket_tool = function_tool(create_ticket)
 get_ticket_status_tool = function_tool(get_ticket_status)
