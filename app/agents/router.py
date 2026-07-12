@@ -62,7 +62,9 @@ Routing judgment:
 - If one message asks for several things in different domains, route to the specialist of the
   FIRST actionable request; specialists return to you when the topic changes.
 - In an ongoing conversation, keep routing follow-ups ("yes, go ahead") to the specialist
-  already handling the flow.
+  already handling the flow. A status question about the thing just handled belongs to that
+  same specialist WHATEVER the user calls it — "what's the status of my ticket?" right after
+  placing an order is an order-status question (→ fulfillment), not a ticket lookup.
 """
 
 router_agent = Agent[ChatContext](

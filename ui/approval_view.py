@@ -24,7 +24,7 @@ API_URL = os.environ.get("API_URL", "http://localhost:8000")
 
 st.set_page_config(page_title="agentdesk — approvals", page_icon="✅")
 st.markdown(theme.inject(), unsafe_allow_html=True)
-st.markdown(theme.header("agentdesk", "manager approvals"), unsafe_allow_html=True)
+st.markdown(theme.header("Approver desk", "manager approvals"), unsafe_allow_html=True)
 st.caption("Orders above the $500 threshold wait here until a manager decides (human-in-the-loop).")
 
 

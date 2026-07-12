@@ -46,10 +46,10 @@ if article_id := st.query_params.get("article"):
         response.raise_for_status()
         article = response.json()
     except httpx.HTTPError:
-        st.markdown(theme.header("agentdesk", "knowledge base"), unsafe_allow_html=True)
+        st.markdown(theme.header("Agent desk", "knowledge base"), unsafe_allow_html=True)
         st.error("This article doesn't exist (or is no longer published).")
         st.stop()
-    st.markdown(theme.header("agentdesk", "knowledge base"), unsafe_allow_html=True)
+    st.markdown(theme.header("Agent desk", "knowledge base"), unsafe_allow_html=True)
     st.title(article["title"])
     meta = [
         theme.pill(article["category"], "knowledge"),
@@ -76,7 +76,7 @@ if "api_ok" not in st.session_state:
     except httpx.HTTPError:
         st.session_state.api_ok = False
 
-st.markdown(theme.header("agentdesk", "AI service desk"), unsafe_allow_html=True)
+st.markdown(theme.header("Agent desk", "AI service desk"), unsafe_allow_html=True)
 st.caption("Ask about IT how-tos, order gear, or report an issue.")
 
 with st.sidebar:
@@ -103,7 +103,20 @@ with st.sidebar:
         st.caption(f"{turns} turn{'s' if turns > 1 else ''} in this conversation")
 
 
-def render_assistant(msg: dict) -> None:
+# The button submits this on the user's behalf: it accepts the knowledge agent's standing
+# refusal-offer (ADR-017), so the knowledge→incident edge files a ticket with full context.
+HUMAN_HANDOFF_MESSAGE = (
+    "Yes, please open a support ticket for this right away with the information you already "
+    "have — don't wait for more details from me — and have someone from IT follow up."
+)
+
+
+def _is_refusal(msg: dict) -> bool:
+    """ADR-017 contract: knowledge answers always carry citations; refusals never do."""
+    return msg.get("agent") == "knowledge" and not msg.get("citations") and not msg.get("cached")
+
+
+def render_assistant(msg: dict, *, key: int | None = None) -> None:
     st.markdown(display_answer(msg["answer"]))
     badges = []
     if msg.get("cached"):
@@ -113,11 +126,16 @@ def render_assistant(msg: dict) -> None:
     if badges:
         st.markdown(theme.pills(*badges), unsafe_allow_html=True)
     if msg.get("citations"):
-        with st.expander(f"📚 Sources ({len(msg['citations'])})"):
+        with st.expander(f"📚 Sources ({len(msg['citations'])})", expanded=True):
             cards = "".join(
                 theme.citation_link(c["title"], c["article_id"]) for c in msg["citations"]
             )
             st.markdown(f'<div class="ad-citations">{cards}</div>', unsafe_allow_html=True)
+    # Only the newest refusal gets the escalation button (key is its position in history —
+    # stable across reruns, so the click is never lost to a changing widget key).
+    if key is not None and _is_refusal(msg):
+        if st.button("🙋 Connect to a human agent", key=f"human-{key}"):
+            st.session_state.pending_prompt = HUMAN_HANDOFF_MESSAGE
 
 
 def avatar_for(msg: dict) -> str:
@@ -126,15 +144,19 @@ def avatar_for(msg: dict) -> str:
     return AVATARS.get(msg.get("agent") or "", "🤖")
 
 
-for msg in st.session_state.messages:
+last_idx = len(st.session_state.messages) - 1
+for i, msg in enumerate(st.session_state.messages):
     if msg["role"] == "assistant":
         with st.chat_message("assistant", avatar=avatar_for(msg)):
-            render_assistant(msg)
+            render_assistant(msg, key=i if i == last_idx else None)
     else:
         with st.chat_message("user", avatar="🧑‍💻"):
             st.markdown(msg["content"])
 
-if prompt := st.chat_input("How do I reset my password?"):
+prompt = st.chat_input("How do I reset my password?")
+if not prompt:
+    prompt = st.session_state.pop("pending_prompt", None)
+if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user", avatar="🧑‍💻"):
         st.markdown(prompt)
@@ -166,6 +188,7 @@ if prompt := st.chat_input("How do I reset my password?"):
                 "agent": None,
                 "citations": [],
             }
-    with st.chat_message("assistant", avatar=avatar_for(msg)):
-        render_assistant(msg)
+    # Append + rerun (rather than rendering in place): the transcript always draws through the
+    # history loop, so the newest refusal's escalation button exists the moment it's answered.
     st.session_state.messages.append(msg)
+    st.rerun()
