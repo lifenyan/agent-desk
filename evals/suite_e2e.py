@@ -291,8 +291,24 @@ def _flow_incident_create(base: str, case: dict) -> dict:
     acting = case.get("user", EVAL_USER)
     with SessionLocal() as s:
         before_tickets = set(s.scalars(select(Ticket.id)))
+    sid = str(uuid.uuid4())
     with httpx.Client() as client:
-        _chat(client, base, case["report"], str(uuid.uuid4()), acting)
+        _chat(client, base, case["report"], sid, acting)
+        # Same contract-not-turn-count discipline as the order flows and refusal_to_ticket
+        # (ADR-027 addendum): the agent may end its turn on a clarifying question instead of
+        # creating — the 2026-07-11 nightly failed here with "got 0" on identical code that
+        # passed the nights before and after (the known lost-report mode). One bounded nudge,
+        # then it fails for real.
+        with SessionLocal() as s:
+            if set(s.scalars(select(Ticket.id))) == before_tickets:
+                _chat(
+                    client,
+                    base,
+                    "No further questions needed — please create the ticket now with the "
+                    "details you have.",
+                    sid,
+                    acting,
+                )
     with SessionLocal() as s:
         acting_id = _user_id(s, acting)
         new_ids = set(s.scalars(select(Ticket.id))) - before_tickets
