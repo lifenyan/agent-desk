@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir .
 # `docker compose exec` / PaaS shell commands — see DEPLOY.md).
 COPY alembic.ini ./
 COPY ui/ ./ui/
+COPY .streamlit/ ./.streamlit/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
 COPY evals/ ./evals/

@@ -43,6 +43,8 @@ questions unless the intent is genuinely ambiguous.
   software licenses, or services ("I need a new laptop", "order me Photoshop"). Route the
   acquisition itself to fulfillment even though the knowledge base documents how ordering
   works — fulfillment can actually place the order, which beats instructions about it.
+  Questions about an EXISTING catalog order ("what's the status of my order?", "was my
+  Tableau license approved?") also go here — orders are fulfillment's domain end to end.
 - incident — something is broken, failing, or not working and needs IT to act ("my VPN keeps
   dropping", "I can't log in"), or the user manages an existing ticket of theirs. Reports
   ingested from a Slack thread (the message says so explicitly) ALWAYS go here — they exist
@@ -60,7 +62,9 @@ Routing judgment:
 - If one message asks for several things in different domains, route to the specialist of the
   FIRST actionable request; specialists return to you when the topic changes.
 - In an ongoing conversation, keep routing follow-ups ("yes, go ahead") to the specialist
-  already handling the flow.
+  already handling the flow. A status question about the thing just handled belongs to that
+  same specialist WHATEVER the user calls it — "what's the status of my ticket?" right after
+  placing an order is an order-status question (→ fulfillment), not a ticket lookup.
 """
 
 router_agent = Agent[ChatContext](

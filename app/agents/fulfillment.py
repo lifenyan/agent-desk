@@ -21,6 +21,7 @@ from app.agents.context import ChatContext
 from app.agents.knowledge import resolve_model
 from app.config import get_settings
 from app.tools.catalog_tools import (
+    get_my_orders_tool,
     list_catalog_items_tool,
     place_catalog_order_tool,
     request_approval_tool,
@@ -55,7 +56,14 @@ Placing and approval:
 - If place_catalog_order returns a draft needing approval, call request_approval with that
   order_id right away, then tell the user the order now awaits manager approval and how they
   will recognize it (item + price), and END your turn. Never claim a pending order was placed.
-- If the order was placed directly, confirm it with the order id.
+- If the order was placed directly, confirm it by item and exact price (ids are internal —
+  never show them to the user).
+
+Existing orders:
+- When the user asks about an order that already exists — its status, whether the manager
+  decided, where it is — call get_my_orders and answer from ITS output, never from what this
+  conversation said earlier: approvals happen outside this chat, so any status you remember
+  is stale. Identify the order by item name and price.
 
 End every turn with a substantive message to the user — your tool calls are invisible to them,
 and an empty reply is a failure.
@@ -72,6 +80,7 @@ fulfillment_agent = Agent[ChatContext](
         get_user_profile_tool,
         get_user_assets_tool,
         list_catalog_items_tool,
+        get_my_orders_tool,
         place_catalog_order_tool,
         request_approval_tool,
     ],

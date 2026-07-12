@@ -448,3 +448,14 @@ def test_chat_route_is_still_bound_to_the_chat_handler():
     chat_routes = [r for r in router.routes if getattr(r, "path", None) == "/chat"]
     assert len(chat_routes) == 1
     assert chat_routes[0].endpoint.__name__ == "chat"
+
+
+def test_articles_route_is_bound_to_its_handler():
+    """Same pin for the citation-link endpoint (the chat UI's article page depends on it)."""
+    from app.api.routes_articles import router
+
+    article_routes = [
+        r for r in router.routes if getattr(r, "path", None) == "/articles/{article_id}"
+    ]
+    assert len(article_routes) == 1
+    assert article_routes[0].endpoint.__name__ == "get_article"
