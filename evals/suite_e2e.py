@@ -25,6 +25,7 @@ seeded DB (plus the intentional M2 demo rows) is left exactly as found.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -628,6 +629,61 @@ def _flow_chat_restart(base: str, case: dict, respawn=None) -> dict:
     }
 
 
+def _flow_stream_parity(base: str, case: dict) -> dict:
+    """M11 (ADR-048): /chat/stream is the same pipeline as the frozen /chat, proven live.
+    A cache-miss knowledge query runs via SSE — deltas must arrive before `final`, and `final`
+    must carry the full ChatResponse equivalent (citations, Sources contract, cached=false).
+    Then the SAME query via POST /chat in a fresh session must come back cached=true with the
+    IDENTICAL answer + citations: the stream's write-time cache store is readable by the
+    frozen endpoint (write-gate parity), and the two contracts carry the same payload."""
+    events: list[tuple[str, dict]] = []
+    with (
+        httpx.Client() as client,
+        client.stream(
+            "POST",
+            f"{base}/chat/stream",
+            json={"message": case["ask"], "user_id": EVAL_USER, "session_id": str(uuid.uuid4())},
+            timeout=CHAT_TIMEOUT,
+        ) as resp,
+    ):
+        resp.raise_for_status()
+        event = data = None
+        for line in resp.iter_lines():
+            if line.startswith("event: "):
+                event = line.removeprefix("event: ")
+            elif line.startswith("data: "):
+                data = line.removeprefix("data: ")
+            elif line == "" and event is not None:
+                events.append((event, json.loads(data)))
+                event = data = None
+
+    kinds = [k for k, _ in events]
+    finals = [payload for kind, payload in events if kind == "final"]
+    deltas = [payload["text"] for kind, payload in events if kind == "delta"]
+    final = finals[0] if finals else {}
+    checks = {
+        "no error frames": "error" not in kinds,
+        "exactly one final, last": len(finals) == 1 and kinds[-1] == "final",
+        "deltas arrived before final": bool(deltas) and kinds.index("delta") < len(kinds) - 1,
+        "final not cached (cache-miss run)": not final.get("cached"),
+        "final has citations": bool(final.get("citations")),
+        "final has Sources": "Sources:" in final.get("answer", ""),
+        "deltas concatenate to the final answer": "".join(deltas) == final.get("answer"),
+    }
+    with httpx.Client() as client:
+        second = _chat(client, base, case["ask"], str(uuid.uuid4()))
+    checks["/chat hit the stream-stored cache entry"] = bool(second["cached"])
+    checks["/chat answer identical to streamed final"] = second["answer"] == final.get("answer")
+    checks["/chat citations identical to streamed final"] = second["citations"] == final.get(
+        "citations"
+    )
+    failed = [name for name, ok in checks.items() if not ok]
+    detail = "all checks" if not failed else f"failed: {failed}"
+    if deltas:
+        detail += f" ({len(deltas)} deltas)"
+    return {"ok": not failed, "detail": detail}
+
+
 _FLOWS = {
     "order_approve": lambda base, case: _flow_order(base, case, "approve"),
     "order_reject": lambda base, case: _flow_order(base, case, "reject"),
@@ -643,6 +699,7 @@ _FLOWS = {
     "order_unorderable": _flow_order_unorderable,
     "memory_carryover": _flow_memory_carryover,
     "chat_restart": _flow_chat_restart,  # run_e2e passes respawn when it owns the server
+    "stream_parity": _flow_stream_parity,
 }
 
 

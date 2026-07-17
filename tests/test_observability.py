@@ -450,6 +450,16 @@ def test_chat_route_is_still_bound_to_the_chat_handler():
     assert chat_routes[0].endpoint.__name__ == "chat"
 
 
+def test_chat_stream_route_is_bound_to_its_handler():
+    """Same pin for the M11 SSE endpoint — added the day the route was (the M6 incident's
+    lesson applies to every helper-dense module, and routes_chat gained several in M11)."""
+    from app.api.routes_chat import router
+
+    stream_routes = [r for r in router.routes if getattr(r, "path", None) == "/chat/stream"]
+    assert len(stream_routes) == 1
+    assert stream_routes[0].endpoint.__name__ == "chat_stream"
+
+
 def test_articles_route_is_bound_to_its_handler():
     """Same pin for the citation-link endpoint (the chat UI's article page depends on it)."""
     from app.api.routes_articles import router

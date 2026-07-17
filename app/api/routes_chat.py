@@ -1,21 +1,29 @@
-"""POST /chat — load session + user facts, check semantic cache (read-only intents), then run the router agent."""
+"""POST /chat + /chat/stream — load session + user facts, check semantic cache (read-only intents), then run the router agent."""
 # Implemented in M1 (router run + structured citations); M2 added multi-turn continuity via
 # session_id (ADR-019). M3 added the semantic-cache pre-check (ADR-023); M5 swapped the session
 # backend to Postgres (ADR-030) and added the user-facts inject/extract hooks (ADR-031).
 # M8 added the Slack source fields + the injection-guardrail tripwire contract (ADR-039/041).
+# M11 added POST /chat/stream (SSE, ADR-048) and extracted the shared pipeline helpers so the
+# two endpoints cannot drift — the /chat JSON contract itself is FROZEN (its clients: the e2e
+# suite, the Slack runner, the eval harness, MCP-adjacent surfaces).
 
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
+from collections.abc import AsyncIterator
 from typing import Any, Literal
 
 from agents import InputGuardrailTripwireTriggered, Runner
 from agents.extensions.memory import SQLAlchemySession
+from agents.stream_events import StreamEvent
 from agents.tracing import custom_span, trace
 from fastapi import APIRouter, BackgroundTasks
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from starlette.background import BackgroundTask
 
 from app.agents.context import ChatContext
 from app.agents.router import router_agent
@@ -24,6 +32,8 @@ from app.db.database import SessionLocal
 from app.db.models import User
 from app.memory import extraction, user_facts
 from app.memory.session_store import get_session_store
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -159,23 +169,123 @@ def _trace_metadata(request: ChatRequest, *, cache_hit: bool) -> dict:
     }
 
 
+# --- the shared pipeline (M11) ----------------------------------------------------------------
+# /chat (frozen JSON contract) and /chat/stream (SSE, ADR-048) are two presentations of ONE
+# pipeline: every invariant-dense step lives in a helper below so the endpoints cannot drift —
+# facts injection (ADR-031), the semantic-cache consult/store pair (ADR-023), the guardrail-trip
+# contract (ADR-041), citation collection + the ticket-number backstop. Extracting these did NOT
+# change /chat's semantics: same steps, same order, same conditions (the untouched 18-flow e2e
+# suite is the proof).
+
+
+async def _inject_user_facts(
+    request: ChatRequest, session: SQLAlchemySession | None, first_turn: bool
+) -> None:
+    """Long-term memory, inject half (ADR-031): on a conversation's FIRST turn the acting
+    user's stored facts enter the session as ONE system item, so every later turn (and every
+    agent the router hands off to) sees them without re-reading the table. Callers gate on
+    source=="chat" (ADR-039): a Slack envelope quotes OTHER people's messages — extracting or
+    injecting "user facts" around multi-author untrusted text would poison the acting user's
+    memory."""
+    if first_turn and session is not None and request.user_id:
+        facts_item = await asyncio.to_thread(user_facts.injection_message, request.user_id)
+        if facts_item is not None:
+            await session.add_items([facts_item])
+
+
+async def _serve_cache_hit(
+    request: ChatRequest,
+    session: SQLAlchemySession | None,
+    first_turn: bool,
+    trace_meta: dict,
+) -> ChatResponse | None:
+    """Semantic-cache pre-check (ADR-023): BEFORE any agent runs. Only read-only (knowledge)
+    answers are ever STORED, so a hit can never re-play an order or a ticket. to_thread:
+    the lookup does sync Redis + (on non-empty cache) one embedding call.
+    Chat-source only (ADR-039): a Slack report exists to become a ticket — serving it a
+    stored knowledge ANSWER (however similar the text) would silently drop the report."""
+    if not (first_turn and request.source == "chat"):
+        return None
+    hit = await asyncio.to_thread(semantic_cache.lookup, request.message)
+    if hit is None:
+        return None
+    trace_meta["cache_hit"] = "true"
+    with custom_span("semantic_cache_hit", data={"similarity": round(hit.similarity, 4)}):
+        if session is not None:
+            # Keep the conversation coherent if the user keeps talking: the session
+            # must contain the turn we just short-circuited.
+            await session.add_items(
+                [
+                    {"role": "user", "content": request.message},
+                    {"role": "assistant", "content": hit.answer},
+                ]
+            )
+    return ChatResponse(
+        answer=hit.answer,
+        agent="knowledge",  # entries are only ever written from knowledge runs
+        citations=[Citation(**c) for c in hit.citations],  # stored, NOT re-collected
+        cached=True,
+    )
+
+
+def _run_context(request: ChatRequest) -> ChatContext:
+    """Trusted per-run state for tools — identity and Slack coordinates are never LLM args."""
+    return ChatContext(
+        user_id=request.user_id,
+        source=request.source,
+        slack_channel=request.slack_channel,
+        slack_thread_ts=request.slack_thread_ts,
+        injection_screened=request.injection_screened,
+    )
+
+
+def _flagged_response(exc: InputGuardrailTripwireTriggered) -> ChatResponse:
+    """M8 injection screen (ADR-041): the run was halted BEFORE any agent acted. Not an
+    HTTP error — the flag is a first-class outcome the Slack runner reacts to (one
+    re-submit with injection_screened=True and a security preamble). The bridge tags
+    the trace flagged:true from the guardrail span itself."""
+    verdict = getattr(exc.guardrail_result.output, "output_info", None)
+    evidence = getattr(verdict, "evidence", "") or ""
+    return ChatResponse(
+        answer=(
+            f"Input flagged by the injection screen; no agent ran. Evidence: {evidence or 'n/a'}"
+        ),
+        agent="guardrail",
+        citations=[],
+        flagged=True,
+    )
+
+
+async def _finalize_run(request: ChatRequest, result: Any, first_turn: bool) -> ChatResponse:
+    """Post-run half shared by both endpoints (result: RunResult or RunResultStreaming —
+    same fields). Ticket-number backstop, citation collection, then the write side of the
+    read-only cache guarantee: knowledge answers with evidence only (never fulfillment/
+    incident, never refusals) — and only first-turn ones, symmetric with lookup. Source-gated
+    like the lookup (M8): a misrouted Slack envelope answered by the knowledge agent must not
+    become a cache entry keyed on envelope text. For a streamed run this executes only after
+    the full answer is assembled — the store is never fed a partial answer."""
+    answer = _confirm_ticket_actions(str(result.final_output), result.new_items)
+    citations = _collect_citations(result.new_items)
+    citation_dicts = [c.model_dump() for c in citations]
+    if (
+        first_turn
+        and request.source == "chat"
+        and semantic_cache.is_cacheable(result.last_agent.name, answer, citation_dicts)
+    ):
+        await asyncio.to_thread(semantic_cache.store, request.message, answer, citation_dicts)
+    return ChatResponse(answer=answer, agent=result.last_agent.name, citations=citations)
+
+
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatResponse:
     session = _load_session(request.session_id)
     first_turn = await _is_first_turn(session)
 
-    # Long-term memory (ADR-031). Inject half: on a conversation's FIRST turn the acting
-    # user's stored facts enter the session as ONE system item, so every later turn (and every
-    # agent the router hands off to) sees them without re-reading the table. Extract half:
-    # queued now, runs AFTER the response is sent (BackgroundTasks) on whichever branch below
-    # returns — a slow or failed extraction can never delay or break the reply.
-    # Chat-source only (ADR-039): a Slack envelope quotes OTHER people's messages — extracting
-    # "user facts" from multi-author untrusted text would poison the acting user's memory.
+    # Long-term memory (ADR-031): inject on the first turn; extraction queued now, runs AFTER
+    # the response is sent (BackgroundTasks) on whichever branch below returns — a slow or
+    # failed extraction can never delay or break the reply. Chat-source only (ADR-039).
     if request.source == "chat":
-        if first_turn and session is not None and request.user_id:
-            facts_item = await asyncio.to_thread(user_facts.injection_message, request.user_id)
-            if facts_item is not None:
-                await session.add_items([facts_item])
+        await _inject_user_facts(request, session, first_turn)
         background_tasks.add_task(
             extraction.extract_and_store, request.user_id, request.message, request.session_id
         )
@@ -188,79 +298,122 @@ async def chat(request: ChatRequest, background_tasks: BackgroundTasks) -> ChatR
     # bridge at trace END, so flipping cache_hit after the lookup is safe by design.
     trace_meta = _trace_metadata(request, cache_hit=False)
     with trace("chat", group_id=request.session_id, metadata=trace_meta):
-        # Semantic-cache pre-check (ADR-023): BEFORE any agent runs. Only read-only (knowledge)
-        # answers are ever STORED, so a hit can never re-play an order or a ticket. to_thread:
-        # the lookup does sync Redis + (on non-empty cache) one embedding call.
-        # Chat-source only (ADR-039): a Slack report exists to become a ticket — serving it a
-        # stored knowledge ANSWER (however similar the text) would silently drop the report.
-        if first_turn and request.source == "chat":
-            hit = await asyncio.to_thread(semantic_cache.lookup, request.message)
-            if hit is not None:
-                trace_meta["cache_hit"] = "true"
-                with custom_span(
-                    "semantic_cache_hit", data={"similarity": round(hit.similarity, 4)}
-                ):
-                    if session is not None:
-                        # Keep the conversation coherent if the user keeps talking: the session
-                        # must contain the turn we just short-circuited.
-                        await session.add_items(
-                            [
-                                {"role": "user", "content": request.message},
-                                {"role": "assistant", "content": hit.answer},
-                            ]
-                        )
-                return ChatResponse(
-                    answer=hit.answer,
-                    agent="knowledge",  # entries are only ever written from knowledge runs
-                    citations=[Citation(**c) for c in hit.citations],  # stored, NOT re-collected
-                    cached=True,
-                )
+        cached = await _serve_cache_hit(request, session, first_turn, trace_meta)
+        if cached is not None:
+            return cached
 
         try:
             result = await Runner.run(
                 router_agent,
                 request.message,
-                context=ChatContext(
-                    user_id=request.user_id,
-                    source=request.source,
-                    slack_channel=request.slack_channel,
-                    slack_thread_ts=request.slack_thread_ts,
-                    injection_screened=request.injection_screened,
-                ),
+                context=_run_context(request),
                 session=session,
             )
         except InputGuardrailTripwireTriggered as exc:
-            # M8 injection screen (ADR-041): the run was halted BEFORE any agent acted. Not an
-            # HTTP error — the flag is a first-class outcome the Slack runner reacts to (one
-            # re-submit with injection_screened=True and a security preamble). The bridge tags
-            # the trace flagged:true from the guardrail span itself.
-            verdict = getattr(exc.guardrail_result.output, "output_info", None)
-            evidence = getattr(verdict, "evidence", "") or ""
-            return ChatResponse(
-                answer=(
-                    "Input flagged by the injection screen; no agent ran. "
-                    f"Evidence: {evidence or 'n/a'}"
-                ),
-                agent="guardrail",
-                citations=[],
-                flagged=True,
-            )
-        answer = _confirm_ticket_actions(str(result.final_output), result.new_items)
-        citations = _collect_citations(result.new_items)
+            return _flagged_response(exc)
 
-        # Write side of the read-only guarantee: knowledge answers with evidence only (never
-        # fulfillment/incident, never refusals) — and only first-turn ones, symmetric with
-        # lookup. Source-gated like the lookup (M8): a misrouted Slack envelope answered by
-        # the knowledge agent must not become a cache entry keyed on envelope text.
-        citation_dicts = [c.model_dump() for c in citations]
-        if (
-            first_turn
-            and request.source == "chat"
-            and semantic_cache.is_cacheable(result.last_agent.name, answer, citation_dicts)
-        ):
-            await asyncio.to_thread(semantic_cache.store, request.message, answer, citation_dicts)
+        return await _finalize_run(request, result, first_turn)
 
-        return ChatResponse(answer=answer, agent=result.last_agent.name, citations=citations)
+
+# --- POST /chat/stream (M11, ADR-048) ----------------------------------------------------------
+
+# Run-item events worth relaying as `status` frames: cheap perceived-latency value during the
+# pre-text seconds (router classification + tool calls happen before the first visible token).
+_STATUS_EVENT_NAMES = {"handoff_occured", "tool_called"}  # "occured": SDK's own (frozen) typo
+
+
+def _sse(event: str, data: dict) -> str:
+    """One SSE frame. json.dumps emits no raw newlines, so a single data: line is always valid."""
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+def _status_payload(event: StreamEvent) -> dict | None:
+    """Which specialist took over / which tool is running — from run-item events, never prose.
+    None = drop the frame: handoffs surface as tool_called("transfer_to_X") first (the SDK
+    models them as tool calls), and the handoff_occured frame right behind it is the real
+    signal — relaying both would show a phantom "running transfer_to_knowledge" status."""
+    if event.name == "handoff_occured":
+        target = getattr(getattr(event.item, "target_agent", None), "name", None)
+        return {"stage": "handoff", "detail": target or "specialist"}
+    tool_name = getattr(event.item.raw_item, "name", "tool")
+    if tool_name.startswith("transfer_to_"):
+        return None
+    return {"stage": "tool", "detail": tool_name}
+
+
+@router.post("/chat/stream")
+async def chat_stream(request: ChatRequest) -> StreamingResponse:
+    """SSE twin of POST /chat — same ChatRequest in, `text/event-stream` out (ADR-048).
+
+    Events: `delta` (text tokens as the specialist generates), `status` (handoff/tool
+    progress), `final` (the full ChatResponse-equivalent JSON — built from ChatResponse
+    itself, so the two payloads cannot drift), `error` (mid-stream failure; HTTP status is
+    already committed at 200 by then, so the error travels in-band). A semantic-cache hit
+    emits the stored answer as ONE delta + final immediately — no fake token-drip.
+
+    Consumed (for now) only by the Streamlit chat UI; every other client stays on the frozen
+    /chat JSON contract (ADR-038's pure-client pattern extended to the browser)."""
+    session = _load_session(request.session_id)
+    first_turn = await _is_first_turn(session)
+
+    async def stream() -> AsyncIterator[str]:
+        # Same ONE-trace rule as /chat (ADR-043), spanning the WHOLE stream: the trace opens
+        # before the cache lookup and closes when the generator finishes (final/error emitted),
+        # so its latency is the real end-to-end streaming time — TTFT wins must show up as
+        # perceived latency, never as shortened traces.
+        trace_meta = _trace_metadata(request, cache_hit=False)
+        with trace("chat", group_id=request.session_id, metadata=trace_meta):
+            try:
+                if request.source == "chat":
+                    await _inject_user_facts(request, session, first_turn)
+                cached = await _serve_cache_hit(request, session, first_turn, trace_meta)
+                if cached is not None:
+                    yield _sse("delta", {"text": cached.answer})
+                    yield _sse("final", cached.model_dump())
+                    return
+
+                result = Runner.run_streamed(
+                    router_agent,
+                    request.message,
+                    context=_run_context(request),
+                    session=session,
+                )
+                try:
+                    async for event in result.stream_events():
+                        if event.type == "raw_response_event":
+                            if getattr(event.data, "type", "") == "response.output_text.delta":
+                                yield _sse("delta", {"text": event.data.delta})
+                        elif (
+                            event.type == "run_item_stream_event"
+                            and event.name in _STATUS_EVENT_NAMES
+                        ):
+                            status = _status_payload(event)
+                            if status is not None:
+                                yield _sse("status", status)
+                except InputGuardrailTripwireTriggered as exc:
+                    yield _sse("final", _flagged_response(exc).model_dump())
+                    return
+
+                final = await _finalize_run(request, result, first_turn)
+                yield _sse("final", final.model_dump())
+            except Exception as exc:  # noqa: BLE001 — status already committed at 200; the
+                # in-band `error` frame is the only channel left (ADR-048). This handler adds
+                # nothing partial to the session on this path — the SDK's own persistence is
+                # the same code for streamed and blocking runs, so failure behavior matches
+                # /chat exactly.
+                logger.exception("chat stream failed mid-flight")
+                yield _sse("error", {"detail": f"{exc.__class__.__name__}: {exc}"})
+
+    # ADR-031 under streaming: FastAPI's BackgroundTasks fires after a NORMAL response only —
+    # for a StreamingResponse the task must ride the response object itself. Starlette runs it
+    # after the stream closes (pinned by test), so extraction can never delay a token, and it
+    # runs on the error path too (same as /chat). Chat-source only (ADR-039).
+    background = None
+    if request.source == "chat":
+        background = BackgroundTask(
+            extraction.extract_and_store, request.user_id, request.message, request.session_id
+        )
+    return StreamingResponse(stream(), media_type="text/event-stream", background=background)
 
 
 class IdentityResolveResponse(BaseModel):
