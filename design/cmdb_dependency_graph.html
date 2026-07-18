@@ -1,0 +1,343 @@
+<!-- Source for cmdb_dependency_graph.png (M9 CMDB: all 59 CIs / 82 edges from
+     data/cis.json + data/dependencies.json, layout columns teams -> front services ->
+     mid services -> auth-service -> ldap-directory -> databases -> servers).
+     The HTML is interactive (hover tooltips; click a CI to run the query_dependency_graph
+     traversal with direction + max_depth controls); the PNG is the static default view.
+     Render:
+       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new \
+         --screenshot=design/cmdb_dependency_graph.png --window-size=1800,1500 \
+         --force-device-scale-factor=2 --hide-scrollbars --default-background-color=FFFFFFFF \
+         file://$PWD/design/cmdb_dependency_graph.html#light
+     (#light / #dark pins the theme regardless of the OS setting — headless Chrome
+     otherwise inherits it via prefers-color-scheme.)
+     Data is embedded (const DATA below), generated from the two json files by a layered
+     longest-path + barycenter layout; regenerate only if the seeded graph changes. -->
+<title>agentdesk CMDB dependency graph</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface: #fcfcfb; --panel: #f4f4f2; --line: #e3e2de;
+    --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #8a8983;
+    --edge: #b9b8b2; --edge-hi: #0b0b0b;
+    --c-team: #2a78d6; --c-service: #1baf7a; --c-database: #eda100; --c-server: #008300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface: #1a1a19; --panel: #232322; --line: #34342f;
+      --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #8a8983;
+      --edge: #4c4b45; --edge-hi: #f2f1ea;
+      --c-team: #3987e5; --c-service: #199e70; --c-database: #c98500; --c-server: #008300;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface: #1a1a19; --panel: #232322; --line: #34342f;
+    --ink: #ffffff; --ink-2: #c3c2b7; --ink-3: #8a8983;
+    --edge: #4c4b45; --edge-hi: #f2f1ea;
+    --c-team: #3987e5; --c-service: #199e70; --c-database: #c98500; --c-server: #008300;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --surface: #fcfcfb; --panel: #f4f4f2; --line: #e3e2de;
+    --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #8a8983;
+    --edge: #b9b8b2; --edge-hi: #0b0b0b;
+    --c-team: #2a78d6; --c-service: #1baf7a; --c-database: #eda100; --c-server: #008300;
+  }
+  body { background: var(--surface); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; }
+  .wrap { max-width: 1780px; margin: 0 auto; padding: 24px 20px 48px; }
+  header h1 { font-size: 21px; font-weight: 650; margin: 0 0 2px; letter-spacing: -0.01em; }
+  header p  { margin: 0; color: var(--ink-2); font-size: 13.5px; max-width: 72ch; }
+  .mono { font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace; }
+
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin: 16px 0 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; color: var(--ink-2); padding: 5px 12px;
+                font: 600 12.5px system-ui, sans-serif; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+  .seg button:focus-visible, .chip:focus-visible, #clear:focus-visible
+    { outline: 2px solid var(--c-team); outline-offset: 1px; }
+  .depth { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 12.5px; }
+  .depth input { accent-color: var(--c-team); width: 110px; }
+  #clear { border: 1px solid var(--line); background: transparent; color: var(--ink-2);
+           border-radius: 8px; padding: 5px 12px; font: 600 12.5px system-ui, sans-serif; cursor: pointer; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center;
+            font-size: 12.5px; color: var(--ink-2); margin-bottom: 6px; }
+  .key { display: inline-flex; align-items: center; gap: 6px; }
+  .swatch { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid; display: inline-block; }
+  .key svg { display: block; }
+
+  .tries { font-size: 12.5px; color: var(--ink-2); margin: 2px 0 12px; }
+  .chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+          border-radius: 999px; padding: 2px 10px; margin: 0 3px;
+          font: 500 12px ui-monospace, "SF Mono", Menlo, monospace; cursor: pointer; }
+
+  #summary { min-height: 22px; font-size: 13px; color: var(--ink-2); margin-bottom: 10px; }
+  #summary strong { color: var(--ink); }
+
+  .board { border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+           overflow-x: auto; position: relative; }
+  svg text { font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace; }
+  .colcap { font: 600 11px system-ui, sans-serif; fill: var(--ink-3);
+            letter-spacing: 0.08em; text-transform: uppercase; }
+  .edge { fill: none; stroke: var(--edge); stroke-width: 1.25; }
+  .edge.hi { stroke: var(--edge-hi); stroke-width: 2.25; }
+  .edge.dim { opacity: 0.12; }
+  .node rect { stroke-width: 1.5; rx: 6; }
+  .node text { font-size: 11px; fill: var(--ink); }
+  .node { cursor: pointer; }
+  .node.dim { opacity: 0.16; }
+  .node.sel rect { stroke-width: 3; }
+  .depthchip circle { fill: var(--ink); }
+  .depthchip text { fill: var(--surface); font: 700 9.5px ui-monospace, Menlo, monospace; }
+  @media (prefers-reduced-motion: no-preference) {
+    .node, .edge { transition: opacity 0.15s ease; }
+  }
+
+  #tip { position: absolute; pointer-events: none; display: none; max-width: 300px;
+         background: var(--ink); color: var(--surface); border-radius: 8px;
+         padding: 8px 10px; font-size: 12px; line-height: 1.45; z-index: 5; }
+  #tip .t-name { font-weight: 700; font-family: ui-monospace, Menlo, monospace; }
+  #tip .t-meta { opacity: 0.75; }
+
+  footer { margin-top: 14px; font-size: 12.5px; color: var(--ink-3); max-width: 82ch; }
+  footer code { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>agentdesk CMDB dependency graph</h1>
+    <p>All 59 CIs and 82 edges from <span class="mono">data/cis.json</span> + <span class="mono">data/dependencies.json</span> (M9, ADR-035).
+       Arrows read left&nbsp;→&nbsp;right as “depends&nbsp;on”. Click a CI to run the same traversal
+       <span class="mono">query_dependency_graph</span> runs; numbers show hop depth.</p>
+  </header>
+
+  <div class="controls">
+    <span class="seg" role="group" aria-label="Traversal direction">
+      <button id="dir-dep" aria-pressed="true">Impact — dependents</button>
+      <button id="dir-req" aria-pressed="false">Root cause — dependencies</button>
+    </span>
+    <label class="depth">max_depth
+      <input type="range" id="depth" min="1" max="10" value="10">
+      <span class="mono" id="depthval">10</span>
+    </label>
+    <button id="clear">Clear selection</button>
+  </div>
+
+  <div class="legend" aria-hidden="false">
+    <span class="key"><span class="swatch" style="border-color:var(--c-team); background:color-mix(in srgb, var(--c-team) 15%, var(--surface))"></span>team (4)</span>
+    <span class="key"><span class="swatch" style="border-color:var(--c-service); background:color-mix(in srgb, var(--c-service) 15%, var(--surface))"></span>service (15)</span>
+    <span class="key"><span class="swatch" style="border-color:var(--c-database); background:color-mix(in srgb, var(--c-database) 15%, var(--surface))"></span>database (10)</span>
+    <span class="key"><span class="swatch" style="border-color:var(--c-server); background:color-mix(in srgb, var(--c-server) 15%, var(--surface))"></span>server (30)</span>
+    <span class="key"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--ink-3)" stroke-width="1.5"/></svg>uses</span>
+    <span class="key"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="6 3"/></svg>calls</span>
+    <span class="key"><svg width="34" height="10"><line x1="1" y1="5" x2="33" y2="5" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>runs_on</span>
+  </div>
+
+  <p class="tries">Try the eval’s landmark cases:
+    <button class="chip" data-ci="db-server-01">db-server-01</button> the 18-CI 4-hop case ·
+    <button class="chip" data-ci="auth-service">auth-service</button> the shared chokepoint ·
+    <button class="chip" data-ci="crm-service">crm-service</button> the trap (finance-reporting reads crm-db directly) ·
+    <button class="chip" data-ci="monitoring-db">monitoring-db</button> the isolated control stack
+  </p>
+
+  <div id="summary">Nothing selected — hover for details, click to traverse.</div>
+
+  <div class="board">
+    <svg id="g" role="img" aria-label="CMDB dependency graph: teams, services, databases, servers"></svg>
+    <div id="tip"></div>
+  </div>
+
+  <footer>
+    Same semantics as the tool: <em>Impact</em> walks against the arrows (who transitively relies on the
+    selected CI), <em>Root cause</em> walks with them (what it relies on); depth = shortest hop distance,
+    the selected CI itself excluded — exactly the CTE’s <code>GROUP BY … MIN(depth)</code> contract.
+    Node columns: teams → front services → mid services → auth-service → ldap-directory → databases → servers.
+  </footer>
+</div>
+
+<script>
+// #light / #dark pins the theme (used by the PNG render command in the header comment).
+if (location.hash === "#light" || location.hash === "#dark")
+  document.documentElement.setAttribute("data-theme", location.hash.slice(1));
+const DATA ={"nodes": [{"n": "team-sales", "t": "team", "o": "sales", "d": "All users in the sales org.", "x": 60, "y": 476.4, "w": 150}, {"n": "team-finance", "t": "team", "o": "finance", "d": "All users in the finance org.", "x": 60, "y": 553.6, "w": 150}, {"n": "team-hr", "t": "team", "o": "hr", "d": "All users in the hr org.", "x": 60, "y": 588.6, "w": 150}, {"n": "team-engineering", "t": "team", "o": "engineering", "d": "All users in the engineering org.", "x": 60, "y": 623.7, "w": 150}, {"n": "bluedesk-web", "t": "service", "o": "engineering", "d": "BlueDesk web client.", "x": 320, "y": 260.4, "w": 170}, {"n": "email-gateway", "t": "service", "o": "engineering", "d": "Corporate mail routing and delivery.", "x": 320, "y": 409.4, "w": 170}, {"n": "sales-dashboard", "t": "service", "o": "sales", "d": "Sales analytics dashboards (reads crm-db directly).", "x": 320, "y": 594.4, "w": 170}, {"n": "print-service", "t": "service", "o": "engineering", "d": "Print queue management for office printers.", "x": 320, "y": 629.4, "w": 170}, {"n": "finance-reporting", "t": "service", "o": "finance", "d": "Financial reporting (reads revenue data from crm-db).", "x": 320, "y": 664.4, "w": 170}, {"n": "vpn-gateway", "t": "service", "o": "engineering", "d": "Remote-access VPN concentrator.", "x": 320, "y": 699.4, "w": 170}, {"n": "payroll-service", "t": "service", "o": "finance", "d": "Payroll processing (reads employee data from hr-db).", "x": 320, "y": 734.4, "w": 170}, {"n": "hr-portal", "t": "service", "o": "hr", "d": "Employee self-service HR portal.", "x": 320, "y": 769.4, "w": 170}, {"n": "ticketing-service", "t": "service", "o": "engineering", "d": "IT service-desk ticketing backend.", "x": 320, "y": 804.4, "w": 170}, {"n": "monitoring-service", "t": "service", "o": "engineering", "d": "Infrastructure monitoring and alerting (deliberately standalone).", "x": 320, "y": 939.2, "w": 170}, {"n": "bluedesk-api", "t": "service", "o": "engineering", "d": "BlueDesk file-sync & collaboration platform API.", "x": 590, "y": 221.3, "w": 140}, {"n": "sso-gateway", "t": "service", "o": "engineering", "d": "Single-sign-on front door for browser-based internal apps.", "x": 590, "y": 381.4, "w": 140}, {"n": "crm-service", "t": "service", "o": "sales", "d": "Customer relationship management backend.", "x": 590, "y": 418.2, "w": 140}, {"n": "auth-service", "t": "service", "o": "engineering", "d": "Central authentication service (tokens, password verification).", "x": 830, "y": 185.2, "w": 130}, {"n": "ldap-directory", "t": "service", "o": "engineering", "d": "Corporate LDAP directory: user accounts and group membership.", "x": 1060, "y": 320.8, "w": 140}, {"n": "auth-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 350.0, "w": 130}, {"n": "bluedesk-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 490.0, "w": 130}, {"n": "ldap-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 542.5, "w": 130}, {"n": "crm-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 647.5, "w": 130}, {"n": "email-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 752.5, "w": 130}, {"n": "monitoring-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 787.5, "w": 130}, {"n": "finance-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 857.5, "w": 130}, {"n": "payroll-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 892.5, "w": 130}, {"n": "hr-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 962.5, "w": 130}, {"n": "tickets-db", "t": "database", "o": null, "d": null, "x": 1300, "y": 997.5, "w": 130}, {"n": "app-server-01", "t": "server", "o": null, "d": null, "x": 1560, "y": 17.5, "w": 140}, {"n": "app-server-02", "t": "server", "o": null, "d": null, "x": 1560, "y": 52.5, "w": 140}, {"n": "app-server-05", "t": "server", "o": null, "d": null, "x": 1560, "y": 87.5, "w": 140}, {"n": "app-server-06", "t": "server", "o": null, "d": null, "x": 1560, "y": 122.5, "w": 140}, {"n": "db-server-02", "t": "server", "o": null, "d": null, "x": 1560, "y": 157.5, "w": 140}, {"n": "infra-server-01", "t": "server", "o": null, "d": null, "x": 1560, "y": 192.5, "w": 140}, {"n": "infra-server-02", "t": "server", "o": null, "d": null, "x": 1560, "y": 227.5, "w": 140}, {"n": "web-server-02", "t": "server", "o": null, "d": null, "x": 1560, "y": 262.5, "w": 140}, {"n": "web-server-03", "t": "server", "o": null, "d": null, "x": 1560, "y": 297.5, "w": 140}, {"n": "app-server-03", "t": "server", "o": null, "d": null, "x": 1560, "y": 332.5, "w": 140}, {"n": "app-server-04", "t": "server", "o": null, "d": null, "x": 1560, "y": 367.5, "w": 140}, {"n": "app-server-09", "t": "server", "o": null, "d": null, "x": 1560, "y": 402.5, "w": 140}, {"n": "app-server-10", "t": "server", "o": null, "d": null, "x": 1560, "y": 437.5, "w": 140}, {"n": "db-server-04", "t": "server", "o": null, "d": null, "x": 1560, "y": 472.5, "w": 140}, {"n": "db-server-05", "t": "server", "o": null, "d": null, "x": 1560, "y": 507.5, "w": 140}, {"n": "db-server-01", "t": "server", "o": null, "d": null, "x": 1560, "y": 542.5, "w": 140}, {"n": "web-server-01", "t": "server", "o": null, "d": null, "x": 1560, "y": 577.5, "w": 140}, {"n": "web-server-06", "t": "server", "o": null, "d": null, "x": 1560, "y": 612.5, "w": 140}, {"n": "db-server-08", "t": "server", "o": null, "d": null, "x": 1560, "y": 647.5, "w": 140}, {"n": "app-server-08", "t": "server", "o": null, "d": null, "x": 1560, "y": 682.5, "w": 140}, {"n": "web-server-05", "t": "server", "o": null, "d": null, "x": 1560, "y": 717.5, "w": 140}, {"n": "db-server-03", "t": "server", "o": null, "d": null, "x": 1560, "y": 752.5, "w": 140}, {"n": "web-server-04", "t": "server", "o": null, "d": null, "x": 1560, "y": 787.5, "w": 140}, {"n": "app-server-07", "t": "server", "o": null, "d": null, "x": 1560, "y": 822.5, "w": 140}, {"n": "db-server-07", "t": "server", "o": null, "d": null, "x": 1560, "y": 857.5, "w": 140}, {"n": "infra-server-03", "t": "server", "o": null, "d": null, "x": 1560, "y": 892.5, "w": 140}, {"n": "infra-server-04", "t": "server", "o": null, "d": null, "x": 1560, "y": 927.5, "w": 140}, {"n": "db-server-06", "t": "server", "o": null, "d": null, "x": 1560, "y": 962.5, "w": 140}, {"n": "infra-server-05", "t": "server", "o": null, "d": null, "x": 1560, "y": 997.5, "w": 140}, {"n": "infra-server-06", "t": "server", "o": null, "d": null, "x": 1560, "y": 1032.5, "w": 140}], "edges": [{"s": "ldap-directory", "t": "infra-server-01", "k": "runs_on"}, {"s": "ldap-directory", "t": "infra-server-02", "k": "runs_on"}, {"s": "ldap-directory", "t": "ldap-db", "k": "uses"}, {"s": "auth-service", "t": "app-server-01", "k": "runs_on"}, {"s": "auth-service", "t": "app-server-02", "k": "runs_on"}, {"s": "auth-service", "t": "auth-db", "k": "uses"}, {"s": "auth-service", "t": "ldap-directory", "k": "calls"}, {"s": "sso-gateway", "t": "web-server-01", "k": "runs_on"}, {"s": "sso-gateway", "t": "auth-service", "k": "calls"}, {"s": "vpn-gateway", "t": "infra-server-03", "k": "runs_on"}, {"s": "vpn-gateway", "t": "infra-server-04", "k": "runs_on"}, {"s": "vpn-gateway", "t": "auth-service", "k": "calls"}, {"s": "email-gateway", "t": "app-server-03", "k": "runs_on"}, {"s": "email-gateway", "t": "app-server-04", "k": "runs_on"}, {"s": "email-gateway", "t": "email-db", "k": "uses"}, {"s": "email-gateway", "t": "auth-service", "k": "calls"}, {"s": "bluedesk-api", "t": "app-server-05", "k": "runs_on"}, {"s": "bluedesk-api", "t": "app-server-06", "k": "runs_on"}, {"s": "bluedesk-api", "t": "bluedesk-db", "k": "uses"}, {"s": "bluedesk-api", "t": "auth-service", "k": "calls"}, {"s": "bluedesk-web", "t": "web-server-02", "k": "runs_on"}, {"s": "bluedesk-web", "t": "web-server-03", "k": "runs_on"}, {"s": "bluedesk-web", "t": "bluedesk-api", "k": "calls"}, {"s": "ticketing-service", "t": "app-server-07", "k": "runs_on"}, {"s": "ticketing-service", "t": "tickets-db", "k": "uses"}, {"s": "ticketing-service", "t": "sso-gateway", "k": "calls"}, {"s": "monitoring-service", "t": "infra-server-05", "k": "runs_on"}, {"s": "monitoring-service", "t": "infra-server-06", "k": "runs_on"}, {"s": "monitoring-service", "t": "monitoring-db", "k": "uses"}, {"s": "print-service", "t": "infra-server-03", "k": "runs_on"}, {"s": "print-service", "t": "ldap-directory", "k": "calls"}, {"s": "hr-portal", "t": "web-server-04", "k": "runs_on"}, {"s": "hr-portal", "t": "hr-db", "k": "uses"}, {"s": "hr-portal", "t": "sso-gateway", "k": "calls"}, {"s": "payroll-service", "t": "app-server-08", "k": "runs_on"}, {"s": "payroll-service", "t": "payroll-db", "k": "uses"}, {"s": "payroll-service", "t": "hr-db", "k": "uses"}, {"s": "payroll-service", "t": "auth-service", "k": "calls"}, {"s": "crm-service", "t": "app-server-09", "k": "runs_on"}, {"s": "crm-service", "t": "app-server-10", "k": "runs_on"}, {"s": "crm-service", "t": "crm-db", "k": "uses"}, {"s": "crm-service", "t": "auth-service", "k": "calls"}, {"s": "sales-dashboard", "t": "web-server-05", "k": "runs_on"}, {"s": "sales-dashboard", "t": "crm-db", "k": "uses"}, {"s": "sales-dashboard", "t": "crm-service", "k": "calls"}, {"s": "finance-reporting", "t": "web-server-06", "k": "runs_on"}, {"s": "finance-reporting", "t": "finance-db", "k": "uses"}, {"s": "finance-reporting", "t": "crm-db", "k": "uses"}, {"s": "finance-reporting", "t": "sso-gateway", "k": "calls"}, {"s": "auth-db", "t": "db-server-01", "k": "runs_on"}, {"s": "auth-db", "t": "db-server-02", "k": "runs_on"}, {"s": "ldap-db", "t": "db-server-01", "k": "runs_on"}, {"s": "email-db", "t": "db-server-03", "k": "runs_on"}, {"s": "bluedesk-db", "t": "db-server-04", "k": "runs_on"}, {"s": "bluedesk-db", "t": "db-server-05", "k": "runs_on"}, {"s": "tickets-db", "t": "db-server-06", "k": "runs_on"}, {"s": "hr-db", "t": "db-server-06", "k": "runs_on"}, {"s": "payroll-db", "t": "db-server-07", "k": "runs_on"}, {"s": "finance-db", "t": "db-server-07", "k": "runs_on"}, {"s": "crm-db", "t": "db-server-08", "k": "runs_on"}, {"s": "monitoring-db", "t": "db-server-03", "k": "runs_on"}, {"s": "team-sales", "t": "crm-service", "k": "uses"}, {"s": "team-sales", "t": "sales-dashboard", "k": "uses"}, {"s": "team-sales", "t": "email-gateway", "k": "uses"}, {"s": "team-sales", "t": "bluedesk-web", "k": "uses"}, {"s": "team-sales", "t": "vpn-gateway", "k": "uses"}, {"s": "team-engineering", "t": "bluedesk-web", "k": "uses"}, {"s": "team-engineering", "t": "ticketing-service", "k": "uses"}, {"s": "team-engineering", "t": "monitoring-service", "k": "uses"}, {"s": "team-engineering", "t": "email-gateway", "k": "uses"}, {"s": "team-engineering", "t": "vpn-gateway", "k": "uses"}, {"s": "team-engineering", "t": "print-service", "k": "uses"}, {"s": "team-finance", "t": "finance-reporting", "k": "uses"}, {"s": "team-finance", "t": "payroll-service", "k": "uses"}, {"s": "team-finance", "t": "email-gateway", "k": "uses"}, {"s": "team-finance", "t": "bluedesk-web", "k": "uses"}, {"s": "team-finance", "t": "vpn-gateway", "k": "uses"}, {"s": "team-hr", "t": "hr-portal", "k": "uses"}, {"s": "team-hr", "t": "payroll-service", "k": "uses"}, {"s": "team-hr", "t": "email-gateway", "k": "uses"}, {"s": "team-hr", "t": "bluedesk-web", "k": "uses"}, {"s": "team-hr", "t": "print-service", "k": "uses"}], "H": 1074, "W": 1720};
+const svg = document.getElementById("g");
+const NS = "http://www.w3.org/2000/svg";
+const PAD_TOP = 34;
+svg.setAttribute("viewBox", `0 0 ${DATA.W} ${DATA.H + PAD_TOP + 10}`);
+svg.setAttribute("width", DATA.W); svg.setAttribute("height", DATA.H + PAD_TOP + 10);
+
+const byName = {};
+DATA.nodes.forEach(n => byName[n.n] = n);
+const succ = {}, pred = {};
+DATA.edges.forEach(e => {
+  (succ[e.s] = succ[e.s] || []).push(e.t);
+  (pred[e.t] = pred[e.t] || []).push(e.s);
+});
+const DASH = { uses: "", calls: "6 3", runs_on: "2 3" };
+const NODE_H = 24;
+
+// column captions
+[["TEAMS", 60], ["SERVICES — calls →", 320], ["DATABASES", 1300], ["SERVERS", 1560]]
+  .forEach(([t, x]) => {
+    const el = document.createElementNS(NS, "text");
+    el.setAttribute("class", "colcap");
+    el.setAttribute("x", x); el.setAttribute("y", 18);
+    el.textContent = t; svg.appendChild(el);
+  });
+
+// edges under nodes
+const edgeEls = [];
+const gEdges = document.createElementNS(NS, "g"); svg.appendChild(gEdges);
+DATA.edges.forEach(e => {
+  const a = byName[e.s], b = byName[e.t];
+  const x1 = a.x + a.w, y1 = a.y + PAD_TOP, x2 = b.x, y2 = b.y + PAD_TOP;
+  const mx = (x1 + x2) / 2;
+  const p = document.createElementNS(NS, "path");
+  p.setAttribute("d", `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+  p.setAttribute("class", "edge");
+  if (DASH[e.k]) p.setAttribute("stroke-dasharray", DASH[e.k]);
+  gEdges.appendChild(p);
+  edgeEls.push({ el: p, s: e.s, t: e.t });
+});
+
+// nodes
+const nodeEls = {};
+const gNodes = document.createElementNS(NS, "g"); svg.appendChild(gNodes);
+DATA.nodes.forEach(n => {
+  const g = document.createElementNS(NS, "g");
+  g.setAttribute("class", "node");
+  g.setAttribute("tabindex", "0");
+  g.setAttribute("role", "button");
+  g.setAttribute("aria-label", `${n.n}, ${n.t}`);
+  const r = document.createElementNS(NS, "rect");
+  r.setAttribute("x", n.x); r.setAttribute("y", n.y + PAD_TOP - NODE_H / 2);
+  r.setAttribute("width", n.w); r.setAttribute("height", NODE_H);
+  r.setAttribute("rx", 6);
+  r.setAttribute("stroke", `var(--c-${n.t})`);
+  r.setAttribute("fill", `color-mix(in srgb, var(--c-${n.t}) 15%, var(--surface))`);
+  const t = document.createElementNS(NS, "text");
+  t.setAttribute("x", n.x + n.w / 2); t.setAttribute("y", n.y + PAD_TOP + 3.5);
+  t.setAttribute("text-anchor", "middle");
+  t.textContent = n.n;
+  g.appendChild(r); g.appendChild(t);
+  gNodes.appendChild(g);
+  nodeEls[n.n] = g;
+});
+
+// depth chips layer (on top)
+const gChips = document.createElementNS(NS, "g"); svg.appendChild(gChips);
+
+// --- state + traversal ---
+let direction = "dependents", maxDepth = 10, selected = null;
+
+function bfs(start, dir, cap) {
+  const nbr = dir === "dependents" ? pred : succ;   // dependents = walk against the arrows
+  const depth = {}; let frontier = [start]; depth[start] = 0;
+  for (let d = 1; d <= cap && frontier.length; d++) {
+    const next = [];
+    frontier.forEach(u => (nbr[u] || []).forEach(v => {
+      if (!(v in depth)) { depth[v] = d; next.push(v); }
+    }));
+    frontier = next;
+  }
+  delete depth[start];
+  return depth;
+}
+
+function render() {
+  gChips.textContent = "";
+  if (!selected) {
+    Object.values(nodeEls).forEach(g => g.classList.remove("dim", "sel"));
+    edgeEls.forEach(e => e.el.classList.remove("dim", "hi"));
+    document.getElementById("summary").textContent =
+      "Nothing selected — hover for details, click to traverse.";
+    return;
+  }
+  const found = bfs(selected, direction, maxDepth);
+  const inSet = n => n === selected || n in found;
+  Object.entries(nodeEls).forEach(([n, g]) => {
+    g.classList.toggle("dim", !inSet(n));
+    g.classList.toggle("sel", n === selected);
+  });
+  edgeEls.forEach(e => {
+    // an edge is on a traversal path if both ends are in the set and it points the walked way
+    const walked = direction === "dependents"
+      ? (inSet(e.t) && inSet(e.s) && (found[e.s] || 0) === ((e.t === selected ? 0 : found[e.t]) + 1))
+      : (inSet(e.s) && inSet(e.t) && (found[e.t] || 0) === ((e.s === selected ? 0 : found[e.s]) + 1));
+    e.el.classList.toggle("hi", walked);
+    e.el.classList.toggle("dim", !walked);
+  });
+  Object.entries(found).forEach(([n, d]) => {
+    const nd = byName[n];
+    const g = document.createElementNS(NS, "g");
+    g.setAttribute("class", "depthchip");
+    const cx = direction === "dependents" ? nd.x + nd.w : nd.x;
+    const c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", cx); c.setAttribute("cy", nd.y + PAD_TOP - 10); c.setAttribute("r", 7.5);
+    const t = document.createElementNS(NS, "text");
+    t.setAttribute("x", cx); t.setAttribute("y", nd.y + PAD_TOP - 7);
+    t.setAttribute("text-anchor", "middle");
+    t.textContent = d;
+    g.appendChild(c); g.appendChild(t); gChips.appendChild(g);
+  });
+  const counts = {};
+  Object.keys(found).forEach(n => { const t = byName[n].t; counts[t] = (counts[t] || 0) + 1; });
+  const parts = ["service", "team", "database", "server"]
+    .filter(t => counts[t]).map(t => `${counts[t]} ${t}${counts[t] > 1 ? "s" : ""}`);
+  const total = Object.keys(found).length;
+  document.getElementById("summary").innerHTML =
+    `<strong class="mono">${selected}</strong> → ${direction}, max_depth ${maxDepth}: ` +
+    (total ? `<strong>${total} CIs</strong> (${parts.join(", ")}) — a CI not highlighted is not affected via the graph.`
+           : `no CIs reached — it has no ${direction} within ${maxDepth} hops.`);
+}
+
+// --- events ---
+const tip = document.getElementById("tip");
+const board = document.querySelector(".board");
+DATA.nodes.forEach(n => {
+  const g = nodeEls[n.n];
+  g.addEventListener("click", ev => { ev.stopPropagation(); selected = n.n; render(); });
+  g.addEventListener("keydown", ev => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); selected = n.n; render(); }
+  });
+  g.addEventListener("mouseenter", () => {
+    tip.innerHTML = `<div class="t-name">${n.n}</div>` +
+      `<div class="t-meta">${n.t} · org: ${n.o}</div><div>${n.d}</div>`;
+    tip.style.display = "block";
+    if (!selected) edgeEls.forEach(e =>
+      e.el.classList.toggle("hi", e.s === n.n || e.t === n.n));
+  });
+  g.addEventListener("mousemove", ev => {
+    const b = board.getBoundingClientRect();
+    let x = ev.clientX - b.left + board.scrollLeft + 14;
+    let y = ev.clientY - b.top + 14;
+    if (x + 310 > board.scrollLeft + b.width) x -= 330;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  });
+  g.addEventListener("mouseleave", () => {
+    tip.style.display = "none";
+    if (!selected) edgeEls.forEach(e => e.el.classList.remove("hi"));
+  });
+});
+svg.addEventListener("click", () => { selected = null; render(); });
+document.getElementById("clear").addEventListener("click", () => { selected = null; render(); });
+document.querySelectorAll(".chip").forEach(c =>
+  c.addEventListener("click", () => { selected = c.dataset.ci; render(); }));
+const bDep = document.getElementById("dir-dep"), bReq = document.getElementById("dir-req");
+function setDir(d) {
+  direction = d;
+  bDep.setAttribute("aria-pressed", d === "dependents");
+  bReq.setAttribute("aria-pressed", d === "dependencies");
+  render();
+}
+bDep.addEventListener("click", () => setDir("dependents"));
+bReq.addEventListener("click", () => setDir("dependencies"));
+document.getElementById("depth").addEventListener("input", ev => {
+  maxDepth = +ev.target.value;
+  document.getElementById("depthval").textContent = maxDepth;
+  render();
+});
+</script>

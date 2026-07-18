@@ -361,6 +361,13 @@ auth-service → four teams use those services. The CMDB dependency graph (59 CI
 `cis` + `dependencies` tables) makes that one recursive traversal; plain RAG has to assemble
 it from prose.
 
+![CMDB dependency graph](design/cmdb_dependency_graph.png)
+
+*The full seeded graph ([`design/cmdb_dependency_graph.html`](design/cmdb_dependency_graph.html)
+is the interactive source: hover any CI for details, click one to run the
+`query_dependency_graph` traversal — direction toggle, `max_depth` slider, hop-depth badges —
+with the eval's landmark cases preloaded as one-click chips).*
+
 **The comparison is deliberately fair to RAG**: seven runbook articles in the KB document
 *every one-hop fact in the graph* (each service's servers, databases, callers, teams, plus a
 database-hosting map — deterministic templates, so no garbled facts). Plain RAG has all the
